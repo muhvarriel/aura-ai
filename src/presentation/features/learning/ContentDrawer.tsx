@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { X, Loader2, BookOpen, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { X, Loader2, BookOpen, AlertCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MarkdownView } from "@/presentation/components/ui/MarkdownView";
 import { QuizCard } from "./QuizCard";
 import { LearningContent } from "@/core/entities/quiz";
 import { RoadmapNode } from "@/core/entities/roadmap";
+
+// ==========================================
+// TYPE DEFINITIONS
+// ==========================================
 
 interface ContentDrawerProps {
   isOpen: boolean;
@@ -17,6 +21,24 @@ interface ContentDrawerProps {
   ) => Promise<LearningContent | null>;
   onQuizComplete: (score: number) => void;
 }
+
+/**
+ * Error state with type and message
+ */
+interface ErrorState {
+  message: string;
+  type: "network" | "generation" | "validation" | "unknown";
+  retryable: boolean;
+}
+
+/**
+ * Loading state types
+ */
+type LoadingState = "idle" | "loading" | "retrying" | "success" | "error";
+
+// ==========================================
+// COMPONENTS
+// ==========================================
 
 /**
  * Loading skeleton component
@@ -48,6 +70,102 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+/**
+ * Error display component with retry button
+ */
+const ErrorDisplay = ({
+  error,
+  retryCount,
+  onRetry,
+  onClose,
+}: {
+  error: ErrorState;
+  retryCount: number;
+  onRetry: () => void;
+  onClose: () => void;
+}) => {
+  const maxRetries = 3;
+  const canRetry = error.retryable && retryCount < maxRetries;
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-center px-10 gap-6">
+      <div className="p-4 rounded-full bg-red-50">
+        <AlertCircle className="text-red-500" size={28} />
+      </div>
+
+      <div className="space-y-3 max-w-md">
+        <h3 className="font-serif text-xl text-neutral-900">
+          Failed to Load Content
+        </h3>
+        <p className="text-sm text-neutral-600">{error.message}</p>
+
+        {retryCount > 0 && canRetry && (
+          <p className="text-xs text-neutral-400">
+            Retry attempt {retryCount}/{maxRetries}
+          </p>
+        )}
+
+        {/* Helpful tips based on error type */}
+        {error.type === "network" && (
+          <p className="text-xs text-neutral-500 mt-2">
+            💡 Check your internet connection and try again.
+          </p>
+        )}
+
+        {error.type === "generation" && (
+          <p className="text-xs text-neutral-500 mt-2">
+            💡 The AI is having trouble generating content. Try a different
+            module or retry in a moment.
+          </p>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        {canRetry && (
+          <button
+            onClick={onRetry}
+            className="group flex items-center justify-center gap-2 px-6 py-3 rounded-full border-2 border-black text-black hover:bg-black hover:text-white transition-all"
+          >
+            <RefreshCw
+              size={16}
+              className="group-hover:rotate-180 transition-transform duration-500"
+            />
+            <span className="text-sm font-medium">Try Again</span>
+          </button>
+        )}
+
+        {!canRetry && error.retryable && (
+          <div className="text-center space-y-2">
+            <p className="text-xs text-red-600 font-medium">
+              Maximum retry attempts reached
+            </p>
+            <button
+              onClick={onClose}
+              className="text-xs text-neutral-500 hover:text-black transition-colors underline"
+            >
+              Close and try another module
+            </button>
+          </div>
+        )}
+
+        {!error.retryable && (
+          <button
+            onClick={onClose}
+            className="text-sm text-neutral-500 hover:text-black transition-colors underline"
+          >
+            Close drawer
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+
 export default function ContentDrawer({
   isOpen,
   onClose,
@@ -56,15 +174,79 @@ export default function ContentDrawer({
   fetchContent,
   onQuizComplete,
 }: ContentDrawerProps) {
+  // State
   const [content, setContent] = useState<LearningContent | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingState, setLoadingState] = useState<LoadingState>("idle");
+  const [error, setError] = useState<ErrorState | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  // Refs
   const abortControllerRef = useRef<AbortController | null>(null);
   const fetchAttemptRef = useRef<number>(0);
 
-  // Cleanup on unmount or close
+  /**
+   * Categorize error based on message
+   */
+  const categorizeError = useCallback((err: unknown): ErrorState => {
+    if (!(err instanceof Error)) {
+      return {
+        message: "An unexpected error occurred. Please try again.",
+        type: "unknown",
+        retryable: true,
+      };
+    }
+
+    const errorMsg = err.message.toLowerCase();
+
+    // Network errors
+    if (
+      errorMsg.includes("network") ||
+      errorMsg.includes("fetch failed") ||
+      errorMsg.includes("connection")
+    ) {
+      return {
+        message: "Network error. Please check your connection and try again.",
+        type: "network",
+        retryable: true,
+      };
+    }
+
+    // Generation errors (from AI)
+    if (
+      errorMsg.includes("generation failed") ||
+      errorMsg.includes("ai returned") ||
+      errorMsg.includes("invalid json") ||
+      errorMsg.includes("timeout")
+    ) {
+      return {
+        message:
+          "Failed to generate content. The AI is having trouble right now. Please retry.",
+        type: "generation",
+        retryable: true,
+      };
+    }
+
+    // Validation errors
+    if (errorMsg.includes("invalid") || errorMsg.includes("validation")) {
+      return {
+        message:
+          "The content format is invalid. Please try again or choose another module.",
+        type: "validation",
+        retryable: true,
+      };
+    }
+
+    // Generic error
+    return {
+      message: err.message || "Failed to load content. Please try again.",
+      type: "unknown",
+      retryable: true,
+    };
+  }, []);
+
+  /**
+   * Cleanup on unmount or close
+   */
   useEffect(() => {
     if (!isOpen) {
       // Cancel any pending request when drawer closes
@@ -72,6 +254,10 @@ export default function ContentDrawer({
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
+
+      // Reset state
+      setLoadingState("idle");
+      setError(null);
     }
 
     return () => {
@@ -81,13 +267,16 @@ export default function ContentDrawer({
     };
   }, [isOpen]);
 
-  // Load data when node changes or drawer opens
+  /**
+   * Load data when node changes or drawer opens
+   */
   useEffect(() => {
     if (isOpen && node) {
       // Reset states for new node
       setContent(null);
       setError(null);
       setRetryCount(0);
+      setLoadingState("idle");
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,7 +286,10 @@ export default function ContentDrawer({
    * Load content with abort controller support
    */
   const loadData = useCallback(async () => {
-    if (!node) return;
+    if (!node) {
+      console.warn("[ContentDrawer] No node provided");
+      return;
+    }
 
     // Cancel previous request if exists
     if (abortControllerRef.current) {
@@ -108,46 +300,46 @@ export default function ContentDrawer({
     abortControllerRef.current = new AbortController();
     const currentAttempt = ++fetchAttemptRef.current;
 
-    setLoading(true);
+    setLoadingState(retryCount > 0 ? "retrying" : "loading");
     setError(null);
+
+    console.log(
+      `[ContentDrawer] Loading content for: ${node.label} (attempt ${currentAttempt})`,
+    );
 
     try {
       const result = await fetchContent(topic, node.label);
 
       // Check if this request is still relevant (not superseded)
       if (currentAttempt !== fetchAttemptRef.current) {
-        console.log("Request superseded, ignoring result");
+        console.log("[ContentDrawer] Request superseded, ignoring result");
         return;
       }
 
       if (result) {
         setContent(result);
+        setLoadingState("success");
         setRetryCount(0); // Reset retry count on success
+        console.log("[ContentDrawer] Content loaded successfully");
       } else {
-        setError("Gagal memuat materi. Konten tidak ditemukan.");
+        throw new Error("Content not found. Please try again.");
       }
     } catch (err) {
       // Ignore abort errors (expected when canceling)
       if (err instanceof Error && err.name === "AbortError") {
-        console.log("Request cancelled");
+        console.log("[ContentDrawer] Request cancelled");
         return;
       }
 
       // Only set error if this request is still current
       if (currentAttempt === fetchAttemptRef.current) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Terjadi kesalahan saat memuat konten.";
-        setError(errorMessage);
-        console.error("Content fetch error:", err);
-      }
-    } finally {
-      if (currentAttempt === fetchAttemptRef.current) {
-        setLoading(false);
+        const categorizedError = categorizeError(err);
+        setError(categorizedError);
+        setLoadingState("error");
+        console.error("[ContentDrawer] Load failed:", err);
       }
     }
-  }, [node, topic, fetchContent]);
+  }, [node, topic, fetchContent, retryCount, categorizeError]);
 
   /**
    * Retry with exponential backoff
@@ -156,11 +348,17 @@ export default function ContentDrawer({
     const nextRetryCount = retryCount + 1;
     setRetryCount(nextRetryCount);
 
-    // Exponential backoff: 0ms, 500ms, 1000ms, 2000ms
-    const delay = nextRetryCount > 1 ? Math.min(1000 * Math.pow(2, nextRetryCount - 2), 5000) : 0;
+    console.log(`[ContentDrawer] Retry ${nextRetryCount}/3`);
+
+    // Exponential backoff: 0ms, 1000ms, 2000ms, 4000ms
+    const delay =
+      nextRetryCount > 1
+        ? Math.min(1000 * Math.pow(2, nextRetryCount - 2), 5000)
+        : 0;
 
     if (delay > 0) {
-      setLoading(true);
+      console.log(`[ContentDrawer] Retrying in ${delay}ms`);
+      setLoadingState("retrying");
       setTimeout(() => {
         loadData();
       }, delay);
@@ -168,6 +366,43 @@ export default function ContentDrawer({
       loadData();
     }
   }, [retryCount, loadData]);
+
+  /**
+   * Render loading state
+   */
+  const renderLoading = () => {
+    // First load
+    if (loadingState === "loading" && !content && retryCount === 0) {
+      return (
+        <div className="h-64 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="animate-spin w-6 h-6 text-black" />
+          <p className="text-sm font-serif italic text-neutral-500">
+            _Crafting your learning guide..._
+          </p>
+        </div>
+      );
+    }
+
+    // Retry loading
+    if (
+      loadingState === "retrying" ||
+      (loadingState === "loading" && retryCount > 0)
+    ) {
+      return (
+        <div className="space-y-4">
+          <div className="h-32 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="animate-spin w-6 h-6 text-black" />
+            <p className="text-sm text-neutral-500">
+              Retrying... (attempt {retryCount}/3)
+            </p>
+          </div>
+          <LoadingSkeleton />
+        </div>
+      );
+    }
+
+    return <LoadingSkeleton />;
+  };
 
   return (
     <AnimatePresence>
@@ -205,9 +440,7 @@ export default function ContentDrawer({
 
                 {/* Metadata */}
                 <div className="flex items-center gap-4 text-xs text-neutral-400">
-                  {node.estimatedTime && (
-                    <span>⏱ {node.estimatedTime}</span>
-                  )}
+                  {node.estimatedTime && <span>⏱ {node.estimatedTime}</span>}
                   {node.difficulty && (
                     <span className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
                       {node.difficulty}
@@ -231,89 +464,53 @@ export default function ContentDrawer({
 
             {/* Body Content */}
             <div className="flex-1 overflow-y-auto bg-white">
-              {loading ? (
-                <div className="flex flex-col">
-                  {/* Centered spinner for first load */}
-                  {!content && retryCount === 0 && (
-                    <div className="h-64 flex flex-col items-center justify-center gap-4">
-                      <Loader2 className="animate-spin w-6 h-6 text-black" />
-                      <p className="text-sm font-serif italic text-neutral-500">
-                        _Crafting your guide..._
-                      </p>
-                    </div>
-                  )}
+              {/* Loading State */}
+              {(loadingState === "loading" || loadingState === "retrying") &&
+                renderLoading()}
 
-                  {/* Skeleton for retries */}
-                  {retryCount > 0 && <LoadingSkeleton />}
-                </div>
-              ) : error ? (
-                <div className="h-full flex flex-col items-center justify-center text-center px-10 gap-6">
-                  <div className="p-4 rounded-full bg-red-50">
-                    <AlertCircle className="text-red-500" size={28} />
-                  </div>
+              {/* Error State */}
+              {loadingState === "error" && error && (
+                <ErrorDisplay
+                  error={error}
+                  retryCount={retryCount}
+                  onRetry={handleRetry}
+                  onClose={onClose}
+                />
+              )}
 
-                  <div className="space-y-3">
-                    <h3 className="font-serif text-xl text-neutral-900">
-                      Failed to Load Content
-                    </h3>
-                    <p className="text-sm text-neutral-600 max-w-sm">
-                      {error}
-                    </p>
-
-                    {retryCount > 0 && (
-                      <p className="text-xs text-neutral-400">
-                        Retry attempt {retryCount}/3
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={handleRetry}
-                    disabled={retryCount >= 3}
-                    className="group flex items-center gap-2 px-6 py-3 rounded-full border-2 border-black text-black hover:bg-black hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-black"
-                  >
-                    <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
-                    <span className="text-sm font-medium">
-                      {retryCount >= 3 ? "Max Retries Reached" : "Try Again"}
-                    </span>
-                  </button>
-
-                  {retryCount >= 3 && (
-                    <button
-                      onClick={onClose}
-                      className="text-xs text-neutral-500 hover:text-black transition-colors underline"
-                    >
-                      Close and try another module
-                    </button>
-                  )}
-                </div>
-              ) : content ? (
+              {/* Success State */}
+              {loadingState === "success" && content && (
                 <div className="flex flex-col">
                   {/* Content */}
                   <div className="p-8 md:p-10 pb-0">
                     <MarkdownView content={content.markdownContent} />
                   </div>
 
-                  {/* Quiz Divider */}
-                  <div className="py-12 px-10">
-                    <div className="flex items-center gap-4 mb-8">
-                      <div className="h-px bg-neutral-100 flex-1"></div>
-                      <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-[0.2em]">
-                        Knowledge Check
-                      </span>
-                      <div className="h-px bg-neutral-100 flex-1"></div>
-                    </div>
+                  {/* Quiz Section */}
+                  {content.quizzes && content.quizzes.length > 0 && (
+                    <div className="py-12 px-10">
+                      <div className="flex items-center gap-4 mb-8">
+                        <div className="h-px bg-neutral-100 flex-1"></div>
+                        <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-[0.2em]">
+                          Knowledge Check
+                        </span>
+                        <div className="h-px bg-neutral-100 flex-1"></div>
+                      </div>
 
-                    {/* Quiz */}
-                    <QuizCard
-                      questions={content.quizzes ?? []}
-                      onComplete={onQuizComplete}
-                    />
-                  </div>
+                      {/* Quiz */}
+                      <QuizCard
+                        questions={content.quizzes}
+                        onComplete={onQuizComplete}
+                      />
+                    </div>
+                  )}
 
                   <div className="h-20"></div>
                 </div>
-              ) : (
+              )}
+
+              {/* Idle/Empty State */}
+              {loadingState === "idle" && !content && !error && (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-neutral-400 font-serif italic">
                     _No content available_

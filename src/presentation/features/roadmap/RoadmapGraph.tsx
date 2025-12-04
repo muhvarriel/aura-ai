@@ -78,7 +78,7 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
       console.log("✅ Node clicked:", node.id, nodeData.label);
       onNodeClick(node.id);
     },
-    [onNodeClick]
+    [onNodeClick],
   );
 
   // FIX: Memoize ReactFlow props for performance
@@ -96,7 +96,7 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
       attributionPosition: "bottom-right" as const,
       defaultEdgeOptions,
     }),
-    [rfNodes, rfEdges, onNodesChange, onEdgesChange, handleNodeClick]
+    [rfNodes, rfEdges, onNodesChange, onEdgesChange, handleNodeClick],
   );
 
   return (

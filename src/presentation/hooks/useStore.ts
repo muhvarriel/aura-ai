@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
  */
 export const useStore = <T, F>(
   store: (callback: (state: T) => unknown) => unknown,
-  callback: (state: T) => F
+  callback: (state: T) => F,
 ): F => {
   // FIX: Langsung ambil result sebagai initial value
   // Ini mencegah undefined flash di first render

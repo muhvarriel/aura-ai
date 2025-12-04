@@ -127,7 +127,7 @@ function calculateNodeLevels(nodes: RoadmapNode[]): {
 function calculateNodePosition(
   level: number,
   indexInLevel: number,
-  totalInLevel: number
+  totalInLevel: number,
 ): NodePosition {
   // Calculate total width needed for this level
   const totalWidth = totalInLevel * (NODE_WIDTH + X_GAP);
@@ -145,7 +145,7 @@ function calculateNodePosition(
  */
 function createEdges(
   nodes: RoadmapNode[],
-  nodeMap: Map<string, RoadmapNode>
+  nodeMap: Map<string, RoadmapNode>,
 ): Edge[] {
   const edges: Edge[] = [];
 
@@ -180,7 +180,7 @@ function createEdges(
 function createNodes(
   nodes: RoadmapNode[],
   nodeLevels: Map<string, number>,
-  levelCounts: Map<number, number>
+  levelCounts: Map<number, number>,
 ): Node<GraphNodeData>[] {
   const reactFlowNodes: Node<GraphNodeData>[] = [];
   const currentLevelCount = new Map<number, number>();
@@ -194,7 +194,7 @@ function createNodes(
     const position = calculateNodePosition(
       level,
       indexInLevel,
-      totalInThisLevel
+      totalInThisLevel,
     );
 
     reactFlowNodes.push({

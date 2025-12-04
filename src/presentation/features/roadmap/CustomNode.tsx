@@ -63,14 +63,14 @@ const CustomNode: React.FC<NodeProps> = ({ data }) => {
     "!w-3 !h-3 !border-2",
     status === "locked"
       ? "!bg-neutral-100 !border-neutral-200"
-      : "!bg-black !border-white"
+      : "!bg-black !border-white",
   );
 
   return (
     <div
       className={cn(
         "px-6 py-5 rounded-[2rem] min-w-[220px] max-w-[280px] relative",
-        STATUS_STYLES[status]
+        STATUS_STYLES[status],
       )}
     >
       {/* Top Handle */}
@@ -87,7 +87,7 @@ const CustomNode: React.FC<NodeProps> = ({ data }) => {
           <h3
             className={cn(
               "font-serif text-lg leading-tight tracking-tight",
-              status === "locked" ? "font-normal" : "font-medium"
+              status === "locked" ? "font-normal" : "font-medium",
             )}
           >
             {label}
@@ -106,7 +106,7 @@ const CustomNode: React.FC<NodeProps> = ({ data }) => {
                 ? "text-neutral-400"
                 : status === "locked"
                   ? "text-neutral-300"
-                  : "text-neutral-500"
+                  : "text-neutral-500",
             )}
           >
             {description}

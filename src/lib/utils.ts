@@ -34,7 +34,7 @@ export function isValidNumber(value: unknown): value is number {
  */
 export function safeJsonParse<T>(
   json: string,
-  validator?: (value: unknown) => value is T
+  validator?: (value: unknown) => value is T,
 ): T | null {
   try {
     const parsed: unknown = JSON.parse(json);
@@ -56,7 +56,7 @@ export function safeJsonParse<T>(
  */
 export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
 
@@ -78,7 +78,7 @@ export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
  */
 export function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(
   func: T,
-  limit: number
+  limit: number,
 ): (...args: Parameters<T>) => void {
   let inThrottle: boolean = false;
 

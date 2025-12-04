@@ -22,7 +22,7 @@ export const maxDuration = 60; // 60 seconds for AI generation
 function log(
   level: "info" | "error",
   message: string,
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
 ) {
   const timestamp = new Date().toISOString();
   const logEntry = {
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
             message: e.message,
           })),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
           "X-Request-ID": requestId,
           "X-Generation-Time": `${duration}ms`,
         },
-      }
+      },
     );
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
         headers: {
           "X-Request-ID": requestId,
         },
-      }
+      },
     );
   }
 }

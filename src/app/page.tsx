@@ -3,7 +3,15 @@
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ArrowRight, Loader2, Search, AlertCircle, CheckCircle2, X } from "lucide-react";
+import {
+  Sparkles,
+  ArrowRight,
+  Loader2,
+  Search,
+  AlertCircle,
+  CheckCircle2,
+  X,
+} from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 import { useRoadmapStore } from "@/infrastructure/store/roadmap-store";
@@ -31,7 +39,13 @@ interface Toast {
 /**
  * Toast Notification Component
  */
-const ToastNotification = ({ toast, onClose }: { toast: Toast; onClose: () => void }) => {
+const ToastNotification = ({
+  toast,
+  onClose,
+}: {
+  toast: Toast;
+  onClose: () => void;
+}) => {
   const icons = {
     success: <CheckCircle2 size={20} className="text-green-600" />,
     error: <AlertCircle size={20} className="text-red-600" />,
@@ -54,7 +68,9 @@ const ToastNotification = ({ toast, onClose }: { toast: Toast; onClose: () => vo
       <div className="flex items-start gap-3">
         <div className="shrink-0 mt-0.5">{icons[toast.type]}</div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-neutral-900">{toast.message}</p>
+          <p className="font-medium text-sm text-neutral-900">
+            {toast.message}
+          </p>
           {toast.description && (
             <p className="text-xs text-neutral-600 mt-1">{toast.description}</p>
           )}
@@ -73,12 +89,22 @@ const ToastNotification = ({ toast, onClose }: { toast: Toast; onClose: () => vo
 /**
  * Toast Container
  */
-const ToastContainer = ({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: string) => void }) => {
+const ToastContainer = ({
+  toasts,
+  onRemove,
+}: {
+  toasts: Toast[];
+  onRemove: (id: string) => void;
+}) => {
   return (
     <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
-          <ToastNotification key={toast.id} toast={toast} onClose={() => onRemove(toast.id)} />
+          <ToastNotification
+            key={toast.id}
+            toast={toast}
+            onClose={() => onRemove(toast.id)}
+          />
         ))}
       </AnimatePresence>
     </div>
@@ -99,17 +125,20 @@ export default function LandingPage() {
   /**
    * Add toast notification
    */
-  const addToast = useCallback((type: ToastType, message: string, description?: string) => {
-    const id = uuidv4();
-    const newToast: Toast = { id, type, message, description };
+  const addToast = useCallback(
+    (type: ToastType, message: string, description?: string) => {
+      const id = uuidv4();
+      const newToast: Toast = { id, type, message, description };
 
-    setToasts((prev) => [...prev, newToast]);
+      setToasts((prev) => [...prev, newToast]);
 
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 5000);
-  }, []);
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 5000);
+    },
+    [],
+  );
 
   /**
    * Remove toast manually
@@ -121,156 +150,170 @@ export default function LandingPage() {
   /**
    * Handle form submission
    */
-  const handleGenerate = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    const trimmedTopic = topic.trim();
-    if (!trimmedTopic) {
-      addToast("error", "Please enter a topic", "Topic cannot be empty");
-      return;
-    }
-
-    if (trimmedTopic.length < 3) {
-      addToast("error", "Topic too short", "Please enter at least 3 characters");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Call API
-      const res = await fetch("/api/roadmap/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: trimmedTopic }),
-      });
-
-      const json = await res.json();
-
-      // Handle API errors
-      if (!res.ok) {
-        const errorType = json.type || "UNKNOWN_ERROR";
-        let errorMessage = json.error || "Failed to generate roadmap";
-        let description = "";
-
-        switch (errorType) {
-          case "AI_CONFIG_ERROR":
-            errorMessage = "Service Configuration Error";
-            description = "AI service is temporarily unavailable. Please try again later.";
-            break;
-          case "AI_TIMEOUT":
-            errorMessage = "Generation Timeout";
-            description = "The request took too long. Try a simpler topic or retry.";
-            break;
-          case "AI_INVALID_RESPONSE":
-            errorMessage = "Invalid AI Response";
-            description = "AI returned unexpected data. Please retry.";
-            break;
-        }
-
-        addToast("error", errorMessage, description);
-        throw new Error(errorMessage);
+      const trimmedTopic = topic.trim();
+      if (!trimmedTopic) {
+        addToast("error", "Please enter a topic", "Topic cannot be empty");
+        return;
       }
 
-      // Validate response structure
-      const aiResponse = json.data as SyllabusResponse;
-
-      if (!aiResponse || !Array.isArray(aiResponse.modules) || aiResponse.modules.length === 0) {
-        console.error("Invalid AI Response Structure:", aiResponse);
+      if (trimmedTopic.length < 3) {
         addToast(
           "error",
-          "Invalid Response Format",
-          "AI returned incomplete data. Please try again."
+          "Topic too short",
+          "Please enter at least 3 characters",
         );
-        throw new Error("Invalid AI response structure");
+        return;
       }
 
-      // Convert to Roadmap entity
-      const roadmapId = uuidv4();
-      const rootId = "root";
-      const nodes: RoadmapNode[] = [];
+      setLoading(true);
 
-      // Create root node
-      nodes.push({
-        id: rootId,
-        label: aiResponse.courseTitle || trimmedTopic,
-        description: aiResponse.overview || `Complete guide to learn ${trimmedTopic}`,
-        status: "unlocked",
-        childrenIds: [],
-        difficulty: "Beginner",
-      });
-
-      // Create module nodes
-      aiResponse.modules.forEach((mod, index) => {
-        const modId = `mod-${index}`;
-        const parentId = index === 0 ? rootId : `mod-${index - 1}`;
-
-        // Link to parent
-        const parentNode = nodes.find((n) => n.id === parentId);
-        if (parentNode) {
-          parentNode.childrenIds = [...parentNode.childrenIds, modId];
-        }
-
-        // Validate difficulty enum
-        const validDifficulties: Array<"Beginner" | "Intermediate" | "Advanced"> = [
-          "Beginner",
-          "Intermediate",
-          "Advanced",
-        ];
-        const difficulty = validDifficulties.includes(mod.difficulty as typeof validDifficulties[number])
-          ? (mod.difficulty as "Beginner" | "Intermediate" | "Advanced")
-          : "Beginner";
-
-        nodes.push({
-          id: modId,
-          label: mod.title,
-          description: mod.description,
-          status: "locked",
-          childrenIds: [],
-          parentId,
-          estimatedTime: mod.estimatedTime,
-          difficulty,
+      try {
+        // Call API
+        const res = await fetch("/api/roadmap/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topic: trimmedTopic }),
         });
-      });
 
-      // Create roadmap
-      const newRoadmap: Roadmap = {
-        id: roadmapId,
-        topic: aiResponse.courseTitle || trimmedTopic,
-        nodes,
-        createdAt: Date.now(),
-        progress: 0,
-      };
+        const json = await res.json();
 
-      // Save and navigate
-      addRoadmap(newRoadmap);
+        // Handle API errors
+        if (!res.ok) {
+          const errorType = json.type || "UNKNOWN_ERROR";
+          let errorMessage = json.error || "Failed to generate roadmap";
+          let description = "";
 
-      addToast(
-        "success",
-        "Roadmap Created!",
-        `${aiResponse.modules.length} modules generated for "${aiResponse.courseTitle}"`
-      );
+          switch (errorType) {
+            case "AI_CONFIG_ERROR":
+              errorMessage = "Service Configuration Error";
+              description =
+                "AI service is temporarily unavailable. Please try again later.";
+              break;
+            case "AI_TIMEOUT":
+              errorMessage = "Generation Timeout";
+              description =
+                "The request took too long. Try a simpler topic or retry.";
+              break;
+            case "AI_INVALID_RESPONSE":
+              errorMessage = "Invalid AI Response";
+              description = "AI returned unexpected data. Please retry.";
+              break;
+          }
 
-      // Navigate after short delay to show toast
-      setTimeout(() => {
-        router.push(`/roadmap/${roadmapId}`);
-      }, 500);
-    } catch (error) {
-      console.error("Generation Error:", error);
+          addToast("error", errorMessage, description);
+          throw new Error(errorMessage);
+        }
 
-      // Error already handled above via toast
-      // This catch is for unexpected errors
-      if (error instanceof Error && !error.message.includes("AI")) {
+        // Validate response structure
+        const aiResponse = json.data as SyllabusResponse;
+
+        if (
+          !aiResponse ||
+          !Array.isArray(aiResponse.modules) ||
+          aiResponse.modules.length === 0
+        ) {
+          console.error("Invalid AI Response Structure:", aiResponse);
+          addToast(
+            "error",
+            "Invalid Response Format",
+            "AI returned incomplete data. Please try again.",
+          );
+          throw new Error("Invalid AI response structure");
+        }
+
+        // Convert to Roadmap entity
+        const roadmapId = uuidv4();
+        const rootId = "root";
+        const nodes: RoadmapNode[] = [];
+
+        // Create root node
+        nodes.push({
+          id: rootId,
+          label: aiResponse.courseTitle || trimmedTopic,
+          description:
+            aiResponse.overview || `Complete guide to learn ${trimmedTopic}`,
+          status: "unlocked",
+          childrenIds: [],
+          difficulty: "Beginner",
+        });
+
+        // Create module nodes
+        aiResponse.modules.forEach((mod, index) => {
+          const modId = `mod-${index}`;
+          const parentId = index === 0 ? rootId : `mod-${index - 1}`;
+
+          // Link to parent
+          const parentNode = nodes.find((n) => n.id === parentId);
+          if (parentNode) {
+            parentNode.childrenIds = [...parentNode.childrenIds, modId];
+          }
+
+          // Validate difficulty enum
+          const validDifficulties: Array<
+            "Beginner" | "Intermediate" | "Advanced"
+          > = ["Beginner", "Intermediate", "Advanced"];
+          const difficulty = validDifficulties.includes(
+            mod.difficulty as (typeof validDifficulties)[number],
+          )
+            ? (mod.difficulty as "Beginner" | "Intermediate" | "Advanced")
+            : "Beginner";
+
+          nodes.push({
+            id: modId,
+            label: mod.title,
+            description: mod.description,
+            status: "locked",
+            childrenIds: [],
+            parentId,
+            estimatedTime: mod.estimatedTime,
+            difficulty,
+          });
+        });
+
+        // Create roadmap
+        const newRoadmap: Roadmap = {
+          id: roadmapId,
+          topic: aiResponse.courseTitle || trimmedTopic,
+          nodes,
+          createdAt: Date.now(),
+          progress: 0,
+        };
+
+        // Save and navigate
+        addRoadmap(newRoadmap);
+
         addToast(
-          "error",
-          "Unexpected Error",
-          "Something went wrong. Please try again."
+          "success",
+          "Roadmap Created!",
+          `${aiResponse.modules.length} modules generated for "${aiResponse.courseTitle}"`,
         );
+
+        // Navigate after short delay to show toast
+        setTimeout(() => {
+          router.push(`/roadmap/${roadmapId}`);
+        }, 500);
+      } catch (error) {
+        console.error("Generation Error:", error);
+
+        // Error already handled above via toast
+        // This catch is for unexpected errors
+        if (error instanceof Error && !error.message.includes("AI")) {
+          addToast(
+            "error",
+            "Unexpected Error",
+            "Something went wrong. Please try again.",
+          );
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [topic, addRoadmap, router, addToast]);
+    },
+    [topic, addRoadmap, router, addToast],
+  );
 
   /**
    * Handle suggestion click
@@ -325,7 +368,10 @@ export default function LandingPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleGenerate} className="relative max-w-xl mx-auto w-full group">
+          <form
+            onSubmit={handleGenerate}
+            className="relative max-w-xl mx-auto w-full group"
+          >
             <div className="relative flex items-center">
               <div className="absolute left-6 text-neutral-400 group-focus-within:text-black transition-colors">
                 <Search size={20} />

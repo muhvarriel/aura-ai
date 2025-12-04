@@ -24,17 +24,43 @@ import {
   QuizQuestion,
 } from "@/core/entities/quiz";
 
-// --- Type Definitions untuk Menghindari "any" ---
+// --- Type Definitions ---
+
+/**
+ * Raw quiz option from API (can be string or structured object)
+ */
+type RawQuizOption =
+  | string
+  | {
+      id?: string;
+      text?: string;
+      isCorrect?: boolean;
+    };
+
+/**
+ * Raw quiz item from API - handles both legacy and new format
+ */
 interface RawQuizItem {
+  // Question field (multiple possible keys)
   question?: string;
   pertanyaan?: string;
-  options?: string[];
-  pilihan?: string[];
+
+  // Options field (multiple possible keys and formats)
+  options?: RawQuizOption[];
+  pilihan?: RawQuizOption[];
+
+  // Answer field (for legacy format)
   answer?: string;
   jawaban?: string;
+
+  // Explanation field
   explanation?: string;
+  penjelasan?: string;
 }
 
+/**
+ * API response structure
+ */
 interface ApiContentResponse {
   data: {
     markdownContent: string;
@@ -43,21 +69,143 @@ interface ApiContentResponse {
   error?: string;
 }
 
-// Wrapper Component agar ReactFlowProvider bekerja
+/**
+ * Type guard to check if value is a non-empty string
+ */
+function isValidString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+/**
+ * Type guard to check if value is a structured option object
+ */
+function isStructuredOption(
+  value: unknown,
+): value is { id?: string; text?: string; isCorrect?: boolean } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "text" in value &&
+    typeof (value as { text?: unknown }).text === "string"
+  );
+}
+
+/**
+ * Transform raw quiz options to QuizOption[]
+ * FIX: Handle both string[] and structured object[] formats
+ */
+function transformQuizOptions(
+  rawOptions: RawQuizOption[] | undefined,
+  correctAnswer: string,
+  questionIndex: number,
+): QuizOption[] {
+  if (!Array.isArray(rawOptions) || rawOptions.length === 0) {
+    return [];
+  }
+
+  const normalizedCorrectAnswer = correctAnswer.toLowerCase().trim();
+
+  return rawOptions
+    .map((opt, optIndex): QuizOption | null => {
+      // Case 1: Structured option object { id, text, isCorrect }
+      if (isStructuredOption(opt)) {
+        return {
+          id: opt.id || `opt-${questionIndex}-${optIndex}`,
+          text: opt.text || "",
+          isCorrect: opt.isCorrect ?? false,
+        };
+      }
+
+      // Case 2: Simple string option
+      if (isValidString(opt)) {
+        const normalizedOption = opt.toLowerCase().trim();
+
+        return {
+          id: `opt-${questionIndex}-${optIndex}`,
+          text: opt,
+          isCorrect:
+            normalizedOption === normalizedCorrectAnswer ||
+            normalizedOption.includes(normalizedCorrectAnswer) ||
+            normalizedCorrectAnswer.includes(normalizedOption),
+        };
+      }
+
+      // Case 3: Invalid option - skip
+      console.warn(
+        `[Quiz Transform] Invalid option at index ${optIndex}:`,
+        opt,
+      );
+      return null;
+    })
+    .filter((opt): opt is QuizOption => opt !== null);
+}
+
+/**
+ * Transform raw quiz data to QuizQuestion[]
+ * FIX: Robust transformation with multiple fallbacks
+ */
+function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
+  if (!Array.isArray(rawQuiz) || rawQuiz.length === 0) {
+    console.warn("[Quiz Transform] No quiz data provided");
+    return [];
+  }
+
+  return rawQuiz
+    .map((q, index): QuizQuestion | null => {
+      // Extract question text
+      const questionText = q.question || q.pertanyaan;
+      if (!isValidString(questionText)) {
+        console.warn(`[Quiz Transform] Invalid question at index ${index}:`, q);
+        return null;
+      }
+
+      // Extract options (try multiple keys)
+      const rawOptions = q.options || q.pilihan;
+
+      // Extract correct answer (for legacy format)
+      const correctAnswer = q.answer || q.jawaban || "";
+
+      // Transform options
+      const options = transformQuizOptions(rawOptions, correctAnswer, index);
+
+      if (options.length === 0) {
+        console.warn(`[Quiz Transform] No valid options for question ${index}`);
+        return null;
+      }
+
+      // Extract explanation
+      const explanation =
+        q.explanation ||
+        q.penjelasan ||
+        (correctAnswer
+          ? `Jawaban yang benar adalah: ${correctAnswer}`
+          : "Tidak ada penjelasan tersedia");
+
+      return {
+        id: `q-${index}`,
+        question: questionText,
+        explanation,
+        options,
+      };
+    })
+    .filter((q): q is QuizQuestion => q !== null);
+}
+
+// --- Main Component ---
+
 const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // FIX: Manual hydration tracking
+  // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
 
-  // FIX: Trigger manual rehydration di client
+  // Trigger rehydration
   useEffect(() => {
     const unsubHydrate = useRoadmapStore.persist.onFinishHydration(() => {
       useRoadmapStore.getState().setHasHydrated(true);
     });
 
-    // Immediate trigger untuk rehydrate
     useRoadmapStore.persist.rehydrate();
 
     return () => {
@@ -65,43 +213,49 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     };
   }, []);
 
-  // FIX: Optimized selectors - stable reference
+  // Selectors
   const roadmap = useStore(
     useRoadmapStore,
-    useCallback(selectRoadmapById(paramsId), [paramsId])
+    useCallback(selectRoadmapById(paramsId), [paramsId]),
   );
 
-  // FIX: Stable action references (tidak re-create tiap render)
   const unlockNext = useRoadmapStore(selectUnlockNext);
   const updateStatus = useRoadmapStore(selectUpdateStatus);
   const cacheContent = useRoadmapStore(selectCacheContent);
   const getCachedContent = useRoadmapStore(selectGetContent);
 
+  // Local state
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const currentNode =
     roadmap?.nodes.find((n) => n.id === selectedNodeId) || null;
 
-  // FIX: Stabilize callback dengan useCallback (dependencies kosong)
+  // Node click handler
   const handleNodeClick = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
     setIsDrawerOpen(true);
-  }, []); // Stable reference - tidak pernah berubah
+  }, []);
 
-  // FIX: Stable fetchContent dengan useCallback
+  // Content fetcher with robust transformation
   const fetchContent = useCallback(
     async (
       topic: string,
-      nodeTitle: string
+      nodeTitle: string,
     ): Promise<LearningContent | null> => {
-      if (!selectedNodeId) return null;
+      if (!selectedNodeId) {
+        console.warn("[Fetch Content] No node selected");
+        return null;
+      }
 
-      // 1. Check Cache First
+      // 1. Check cache first
       const cached = getCachedContent(selectedNodeId);
-      if (cached) return cached;
+      if (cached) {
+        console.log(`[Fetch Content] Using cached content for: ${nodeTitle}`);
+        return cached;
+      }
 
-      // 2. Cancel previous request if exists
+      // 2. Cancel previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -109,50 +263,36 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
       // 3. Create new AbortController
       abortControllerRef.current = new AbortController();
 
-      // 4. Call API with abort signal
+      // 4. Fetch from API
       try {
+        console.log(`[Fetch Content] Fetching: ${nodeTitle}`);
+
         const res = await fetch("/api/roadmap/content", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ topic, moduleTitle: nodeTitle }),
-          signal: abortControllerRef.current.signal, // FIX: Add abort support
+          signal: abortControllerRef.current.signal,
         });
 
         const json = (await res.json()) as ApiContentResponse;
-        if (!res.ok) throw new Error(json.error || "Unknown error");
 
-        // --- DATA TRANSFORMATION START ---
-        const rawQuiz = json.data.quiz || [];
+        if (!res.ok) {
+          throw new Error(json.error || "Failed to fetch content");
+        }
 
-        // Map AI's simple format to our complex Entity format
-        const mappedQuizzes: QuizQuestion[] = rawQuiz.map(
-          (q: RawQuizItem, index: number) => {
-            const questionText =
-              q.question || q.pertanyaan || "Pertanyaan tanpa teks";
-            const rawOptions = q.options || q.pilihan || [];
-            const correctAnswer = q.answer || q.jawaban || "";
+        // 5. Validate response structure
+        if (!json.data || typeof json.data.markdownContent !== "string") {
+          throw new Error("Invalid API response structure");
+        }
 
-            const options: QuizOption[] = Array.isArray(rawOptions)
-              ? rawOptions.map((optText: string, optIndex: number) => ({
-                id: `opt-${index}-${optIndex}`,
-                text: optText,
-                isCorrect:
-                  optText.toLowerCase().trim() ===
-                  correctAnswer.toLowerCase().trim(),
-              }))
-              : [];
+        // 6. Transform quiz data with new robust function
+        const mappedQuizzes = transformQuizData(json.data.quiz || []);
 
-            return {
-              id: `q-${index}`,
-              question: questionText,
-              explanation:
-                q.explanation || "Jawaban yang benar adalah: " + correctAnswer,
-              options: options,
-            };
-          }
+        console.log(
+          `[Fetch Content] Successfully transformed ${mappedQuizzes.length} quiz questions`,
         );
-        // --- DATA TRANSFORMATION END ---
 
+        // 7. Create content object
         const content: LearningContent = {
           nodeId: selectedNodeId,
           title: nodeTitle,
@@ -160,36 +300,46 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           quizzes: mappedQuizzes,
         };
 
+        // 8. Cache and return
         cacheContent(selectedNodeId, content);
         return content;
       } catch (error) {
-        // FIX: Ignore AbortError (normal cancellation)
+        // Handle abort (normal cancellation)
         if (error instanceof Error && error.name === "AbortError") {
-          console.log("Request cancelled:", nodeTitle);
+          console.log(`[Fetch Content] Request cancelled: ${nodeTitle}`);
           return null;
         }
-        console.error("Fetch Error:", error);
-        return null;
+
+        // Log other errors
+        console.error("[Fetch Content] Error:", error);
+
+        // Re-throw for ContentDrawer to handle
+        throw error;
       }
     },
-    [selectedNodeId, getCachedContent, cacheContent]
+    [selectedNodeId, getCachedContent, cacheContent],
   );
 
-  // FIX: Stable quiz completion handler
+  // Quiz completion handler
   const handleQuizComplete = useCallback(
     (score: number) => {
-      if (!selectedNodeId || !roadmap) return;
+      if (!selectedNodeId || !roadmap) {
+        console.warn("[Quiz Complete] Missing required data");
+        return;
+      }
 
-      // Mark as Completed
+      console.log(`[Quiz Complete] Node: ${selectedNodeId}, Score: ${score}`);
+
+      // Mark as completed
       updateStatus(roadmap.id, selectedNodeId, "completed");
 
-      // Unlock Next Node Logic
+      // Unlock next node
       unlockNext(roadmap.id, selectedNodeId);
     },
-    [selectedNodeId, roadmap, updateStatus, unlockNext]
+    [selectedNodeId, roadmap, updateStatus, unlockNext],
   );
 
-  // Cleanup abort controller on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -198,7 +348,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     };
   }, []);
 
-  // FIX: Show loading skeleton saat belum hydrated
+  // Loading state (before hydration)
   if (!hasHydrated) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-white text-black font-serif text-xl">
@@ -212,7 +362,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     );
   }
 
-  // Check roadmap setelah hydrated
+  // Roadmap not found
   if (!roadmap) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-white text-black font-serif text-xl">
@@ -229,11 +379,12 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     );
   }
 
+  // Main UI
   return (
     <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden">
-      {/* --- Aura Header Style --- */}
+      {/* Header */}
       <header className="absolute top-0 left-0 w-full px-6 py-6 flex items-start justify-between z-40 pointer-events-none">
-        {/* Left: Back & Title Group */}
+        {/* Left: Back & Title */}
         <div className="flex flex-col items-start gap-4 pointer-events-auto">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -255,7 +406,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
               {roadmap.topic}
             </h1>
 
-            {/* Editorial Progress Bar */}
+            {/* Progress bar */}
             <div className="flex items-center gap-3">
               <div className="flex-1 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
                 <motion.div
@@ -272,7 +423,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           </div>
         </div>
 
-        {/* Right: Menu Action */}
+        {/* Right: Menu */}
         <div className="pointer-events-auto">
           <motion.button
             whileHover={{ rotate: 90 }}
@@ -283,14 +434,14 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         </div>
       </header>
 
-      {/* --- Graph Canvas --- */}
+      {/* Graph Canvas */}
       <div className="flex-1 w-full h-full relative bg-white">
         <RoadmapGraph nodes={roadmap.nodes} onNodeClick={handleNodeClick} />
 
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#e5e5e5_1px,transparent_1px)] [background-size:16px_16px] opacity-40 -z-10" />
       </div>
 
-      {/* --- Learning Drawer --- */}
+      {/* Learning Drawer */}
       <ContentDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -303,6 +454,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   );
 };
 
+// Root component with ReactFlowProvider
 export default function RoadmapPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;

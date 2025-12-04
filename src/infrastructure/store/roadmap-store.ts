@@ -23,7 +23,7 @@ interface RoadmapActions {
   updateNodeStatus: (
     roadmapId: string,
     nodeId: string,
-    status: NodeStatus
+    status: NodeStatus,
   ) => void;
   unlockNextNode: (roadmapId: string, currentNodeId: string) => void;
 
@@ -74,15 +74,15 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
             // Update specific node status
             const updatedNodes = map.nodes.map((node) =>
-              node.id === nodeId ? { ...node, status } : node
+              node.id === nodeId ? { ...node, status } : node,
             );
 
             // Calculate new progress
             const completedCount = updatedNodes.filter(
-              (n) => n.status === "completed"
+              (n) => n.status === "completed",
             ).length;
             const progress = Math.round(
-              (completedCount / updatedNodes.length) * 100
+              (completedCount / updatedNodes.length) * 100,
             );
 
             return { ...map, nodes: updatedNodes, progress };
@@ -145,8 +145,8 @@ export const useRoadmapStore = create<RoadmapStore>()(
           state.setHasHydrated(true);
         }
       },
-    }
-  )
+    },
+  ),
 );
 
 // NEW: Optimized Selectors (Prevent unnecessary re-renders)

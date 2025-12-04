@@ -10,7 +10,8 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: "AURA AI - Intelligent Learning Pathways",
-  description: "Unlock your potential with personalized, AI-driven learning roadmaps.",
+  description:
+    "Unlock your potential with personalized, AI-driven learning roadmaps.",
   icons: {
     icon: "/favicon.ico",
   },

@@ -8,6 +8,13 @@ export const AI_CONFIG = {
   // dibanding model besar. Setting rendah menjaga konsistensi format JSON.
   TEMPERATURE: 0.3,
 
-  // Tetap berikan retry, karena model kecil kadang output JSON-nya tidak sempurna
+  // Max tokens untuk memastikan response tidak terpotong
+  // 4096 cukup untuk syllabus 5-8 modul atau content + quiz
+  MAX_TOKENS: 4096,
+
+  // Retry configuration
   MAX_RETRIES: 3,
-};
+
+  // Streaming disabled untuk memastikan response lengkap
+  STREAMING: false,
+} as const;
