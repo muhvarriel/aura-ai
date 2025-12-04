@@ -6,11 +6,11 @@ import {
   getChildNodeIds,
 } from "@/core/entities/roadmap";
 
-// --- LAYOUT CONSTANTS ---
-const NODE_WIDTH = 250;
-const X_GAP = 120;
-const Y_GAP = 200;
-const HORIZONTAL_STAGGER = 40;
+// ✅ IMPROVED: Better spacing constants for cleaner layout
+const NODE_WIDTH = 220; // Reduced from 250 to match new CustomNode width
+const X_GAP = 150; // Increased from 120 for more horizontal breathing room
+const Y_GAP = 280; // Increased from 200 for better vertical separation
+const HORIZONTAL_STAGGER = 60; // Increased from 40 for more visual variety
 
 // --- TYPE DEFINITIONS ---
 interface NodeLevel {
@@ -44,7 +44,7 @@ export interface GraphNodeData extends Record<string, unknown> {
 }
 
 /**
- * Get edge style based on source node status
+ * ✅ IMPROVED: Better edge styling with improved visibility
  */
 function getEdgeStyle(status: NodeStatus): {
   stroke: string;
@@ -54,20 +54,20 @@ function getEdgeStyle(status: NodeStatus): {
   switch (status) {
     case "completed":
       return {
-        stroke: "#000000", // Black for completed
-        strokeWidth: 2,
+        stroke: "#10b981", // Emerald for completed (matches new CustomNode)
+        strokeWidth: 3, // Thicker for better visibility
         animated: true,
       };
     case "unlocked":
       return {
         stroke: "#3b82f6", // Blue for unlocked
-        strokeWidth: 2,
+        strokeWidth: 3, // Thicker for better visibility
         animated: false,
       };
     case "locked":
     default:
       return {
-        stroke: "#e5e7eb", // Light gray for locked
+        stroke: "#d1d5db", // Slightly darker gray for locked
         strokeWidth: 2,
         animated: false,
       };
@@ -75,7 +75,7 @@ function getEdgeStyle(status: NodeStatus): {
 }
 
 /**
- * ✅ FIX: Calculate node levels using BFS traversal with edges
+ * Calculate node levels using BFS traversal with edges
  * Supports backward compatibility with childrenIds
  */
 function calculateNodeLevels(
@@ -120,14 +120,14 @@ function calculateNodeLevels(
     levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
     maxLevel = Math.max(maxLevel, level);
 
-    // ✅ FIX: Get children using edges (with backward compatibility)
+    // Get children using edges (with backward compatibility)
     let childIds: string[];
 
     if (edges.length > 0) {
       // Use edges (new approach)
       childIds = getChildNodeIds(id, edges);
     } else {
-      // ✅ Backward compatibility: Use childrenIds if edges not available
+      // Backward compatibility: Use childrenIds if edges not available
       const node = nodeMap.get(id);
       childIds = node?.childrenIds || [];
     }
@@ -141,14 +141,14 @@ function calculateNodeLevels(
   }
 
   console.log(
-    `[Graph Layout] Calculated levels for ${visited.size} nodes, max level: ${maxLevel}`,
+    `[Graph Layout] 📐 Calculated levels for ${visited.size} nodes, max level: ${maxLevel}`,
   );
 
   return { nodeLevels, levelCounts, maxLevel };
 }
 
 /**
- * Calculate node position with natural stagger effect
+ * ✅ IMPROVED: Better node positioning with adaptive spacing
  */
 function calculateNodePosition(
   level: number,
@@ -159,9 +159,12 @@ function calculateNodePosition(
   const totalWidth = totalInLevel * (NODE_WIDTH + X_GAP);
   const startX = -(totalWidth / 2);
 
-  // Add subtle horizontal stagger for more organic look
+  // ✅ IMPROVED: More pronounced stagger for visual variety
   const staggerOffset =
     indexInLevel % 2 === 0 ? HORIZONTAL_STAGGER : -HORIZONTAL_STAGGER / 2;
+
+  // ✅ IMPROVED: Add extra vertical padding for first level (root node)
+  const extraTopPadding = level === 0 ? 50 : 0;
 
   return {
     x:
@@ -169,26 +172,26 @@ function calculateNodePosition(
       indexInLevel * (NODE_WIDTH + X_GAP) +
       NODE_WIDTH / 2 +
       staggerOffset,
-    y: level * Y_GAP + 100,
+    y: level * Y_GAP + 120 + extraTopPadding, // Increased top padding from 100 to 120
   };
 }
 
 /**
- * ✅ FIX: Create ReactFlow edges from edges array
+ * Create ReactFlow edges from edges array
  * Supports backward compatibility with childrenIds
  */
 function createEdges(nodes: RoadmapNode[], edges: RoadmapEdge[]): Edge[] {
   const reactFlowEdges: Edge[] = [];
 
   if (edges.length > 0) {
-    // ✅ Use edges array (new approach)
+    // Use edges array (new approach)
     const nodeMap = new Map<string, RoadmapNode>();
     nodes.forEach((node) => nodeMap.set(node.id, node));
 
     edges.forEach((edge) => {
       const sourceNode = nodeMap.get(edge.source);
       if (!sourceNode) {
-        console.warn(`[Graph Layout] Source node not found: ${edge.source}`);
+        console.warn(`[Graph Layout] ⚠️ Source node not found: ${edge.source}`);
         return;
       }
 
@@ -207,9 +210,9 @@ function createEdges(nodes: RoadmapNode[], edges: RoadmapEdge[]): Edge[] {
       });
     });
   } else {
-    // ✅ Backward compatibility: Build edges from childrenIds
+    // Backward compatibility: Build edges from childrenIds
     console.warn(
-      "[Graph Layout] No edges found, using childrenIds (deprecated)",
+      "[Graph Layout] ⚠️ No edges found, using childrenIds (deprecated)",
     );
 
     nodes.forEach((node) => {
@@ -234,7 +237,7 @@ function createEdges(nodes: RoadmapNode[], edges: RoadmapEdge[]): Edge[] {
     });
   }
 
-  console.log(`[Graph Layout] Created ${reactFlowEdges.length} edges`);
+  console.log(`[Graph Layout] 🔗 Created ${reactFlowEdges.length} edges`);
   return reactFlowEdges;
 }
 
@@ -284,7 +287,7 @@ function createNodes(
 }
 
 /**
- * ✅ UPDATED: Main function with edges parameter
+ * Main function - Generate graph layout
  *
  * Algorithm: Vertical Tree Layout with BFS + Custom Position Override
  * Time Complexity: O(n) where n = number of nodes
@@ -296,7 +299,7 @@ function createNodes(
  */
 export function getGraphLayout(
   nodes: RoadmapNode[],
-  edges: RoadmapEdge[] = [], // ✅ ADD edges parameter with default
+  edges: RoadmapEdge[] = [],
   customPositions?: Record<string, CustomNodePosition>,
 ): LayoutResult {
   // Early return for empty input
@@ -308,7 +311,7 @@ export function getGraphLayout(
   }
 
   console.log(
-    `[Graph Layout] Processing ${nodes.length} nodes with ${edges.length} edges`,
+    `[Graph Layout] 🎨 Processing ${nodes.length} nodes with ${edges.length} edges`,
   );
 
   // Calculate levels using BFS with edges

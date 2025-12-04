@@ -21,6 +21,7 @@ interface RoadmapState {
   contentCache: Record<string, LearningContent>;
   customPositions: RoadmapCustomPositions;
   _hasHydrated: boolean;
+  stateVersion: number; // ✅ NEW: Force re-render trigger
 }
 
 // Interface Actions (Function)
@@ -58,6 +59,9 @@ interface RoadmapActions {
 
   // Hydration Control
   setHasHydrated: (state: boolean) => void;
+
+  // ✅ NEW: Force update
+  forceUpdate: () => void;
 }
 
 // Gabungan State + Actions
@@ -72,25 +76,27 @@ export const useRoadmapStore = create<RoadmapStore>()(
       contentCache: {},
       customPositions: {},
       _hasHydrated: false,
+      stateVersion: 0, // ✅ NEW
 
       // Actions Implementation
       addRoadmap: (roadmap) => {
         console.log(
-          `[Store] Adding roadmap: ${roadmap.id} - "${roadmap.topic}"`,
+          `[Store] ➕ Adding roadmap: ${roadmap.id} - "${roadmap.topic}"`,
         );
         set((state) => ({
           roadmaps: [roadmap, ...state.roadmaps],
           activeRoadmapId: roadmap.id,
+          stateVersion: state.stateVersion + 1,
         }));
       },
 
       setActiveRoadmap: (id) => {
-        console.log(`[Store] Setting active roadmap: ${id}`);
+        console.log(`[Store] 🎯 Setting active roadmap: ${id}`);
         set({ activeRoadmapId: id });
       },
 
       deleteRoadmap: (id) => {
-        console.log(`[Store] Deleting roadmap: ${id}`);
+        console.log(`[Store] 🗑️ Deleting roadmap: ${id}`);
         set((state) => {
           const newCustomPositions = { ...state.customPositions };
           delete newCustomPositions[id];
@@ -100,6 +106,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
             activeRoadmapId:
               state.activeRoadmapId === id ? null : state.activeRoadmapId,
             customPositions: newCustomPositions,
+            stateVersion: state.stateVersion + 1,
           };
         });
       },
@@ -110,7 +117,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
       updateNodeStatus: (roadmapId, nodeId, status) => {
         console.log(
-          `[Store] Updating node ${nodeId} in roadmap ${roadmapId} to status: ${status}`,
+          `[Store] 📝 Updating node ${nodeId} in roadmap ${roadmapId} to status: ${status}`,
         );
 
         set((state) => ({
@@ -131,21 +138,24 @@ export const useRoadmapStore = create<RoadmapStore>()(
             );
 
             console.log(
-              `[Store] Node ${nodeId} status updated to ${status}. Progress: ${progress}% (${completedCount}/${updatedNodes.length} completed)`,
+              `[Store] ✅ Node ${nodeId} → ${status} | Progress: ${progress}% (${completedCount}/${updatedNodes.length})`,
             );
 
             return { ...map, nodes: updatedNodes, progress };
           }),
+          stateVersion: state.stateVersion + 1, // ✅ Force re-render
         }));
       },
 
       unlockNextNode: (roadmapId, currentNodeId) => {
-        console.log(
-          `[Store] ═══════════════════════════════════════════════════════`,
-        );
-        console.log(
-          `[Store] UNLOCK PROCESS STARTED for node: ${currentNodeId}`,
-        );
+        console.log(`
+╔════════════════════════════════════════════════════════════╗
+║            🔓 UNLOCK PROCESS STARTED                       ║
+╠════════════════════════════════════════════════════════════╣
+║  Roadmap ID:    ${roadmapId.substring(0, 12)}...
+║  Current Node:  ${currentNodeId}
+╚════════════════════════════════════════════════════════════╝
+        `);
 
         const roadmap = get().roadmaps.find((r) => r.id === roadmapId);
         if (!roadmap) {
@@ -161,7 +171,13 @@ export const useRoadmapStore = create<RoadmapStore>()(
           return;
         }
 
-        // ✅ FIX: Use edges to get children, not childrenIds
+        console.log(`[Store] 📊 Current Node Details:`, {
+          id: currentNode.id,
+          label: currentNode.label,
+          status: currentNode.status,
+        });
+
+        // ✅ Use edges to get children
         const edges = roadmap.edges || [];
         if (edges.length === 0) {
           console.warn(
@@ -170,6 +186,8 @@ export const useRoadmapStore = create<RoadmapStore>()(
           return;
         }
 
+        console.log(`[Store] 🔗 Total edges in roadmap: ${edges.length}`);
+
         const childrenIds = getChildNodeIds(currentNodeId, edges);
 
         if (childrenIds.length === 0) {
@@ -177,16 +195,20 @@ export const useRoadmapStore = create<RoadmapStore>()(
             `[Store] ℹ️ Node ${currentNodeId} has no children (leaf node)`,
           );
           console.log(
-            `[Store] ═══════════════════════════════════════════════════════`,
+            `╚════════════════════════════════════════════════════════════╝\n`,
           );
           return;
         }
 
         console.log(
-          `[Store] 🔍 Found ${childrenIds.length} child nodes: [${childrenIds.join(", ")}]`,
+          `[Store] 🔍 Found ${childrenIds.length} child node(s): [${childrenIds.join(", ")}]`,
         );
 
-        // ✅ FIX: Validate each child before unlocking
+        let unlockedCount = 0;
+        let skippedCount = 0;
+        let alreadyUnlockedCount = 0;
+
+        // ✅ Validate each child before unlocking
         set((state) => ({
           roadmaps: state.roadmaps.map((map) => {
             if (map.id !== roadmapId) return map;
@@ -195,35 +217,51 @@ export const useRoadmapStore = create<RoadmapStore>()(
               // Only process children of current node
               if (!childrenIds.includes(node.id)) return node;
 
+              console.log(
+                `\n[Store] 🔎 Checking child: ${node.id} (${node.label})`,
+              );
+              console.log(`[Store]    Current status: ${node.status}`);
+
               // ✅ Check if node can be unlocked (all parents completed)
               const canUnlock = canUnlockNode(node.id, map.nodes, edges);
 
               if (canUnlock && node.status === "locked") {
                 console.log(
-                  `[Store] ✅ UNLOCKING: ${node.id} (${node.label}) - All parents completed`,
+                  `[Store] ✅ UNLOCKING: ${node.id} - All parents completed`,
                 );
+                unlockedCount++;
                 return {
                   ...node,
                   status: "unlocked" as NodeStatus,
                 };
               } else if (!canUnlock) {
                 console.log(
-                  `[Store] ⏸️ SKIPPING: ${node.id} (${node.label}) - Not all parents completed`,
+                  `[Store] ⏸️ SKIPPING: ${node.id} - Not all parents completed`,
                 );
+                skippedCount++;
               } else {
                 console.log(
-                  `[Store] ℹ️ ALREADY: ${node.id} (${node.label}) - Status: ${node.status}`,
+                  `[Store] ℹ️ ALREADY: ${node.id} - Status: ${node.status}`,
                 );
+                alreadyUnlockedCount++;
               }
 
               return node;
             });
 
-            console.log(
-              `[Store] ═══════════════════════════════════════════════════════`,
-            );
+            console.log(`
+╔════════════════════════════════════════════════════════════╗
+║            📊 UNLOCK SUMMARY                               ║
+╠════════════════════════════════════════════════════════════╣
+║  ✅ Unlocked:           ${unlockedCount}
+║  ⏸️  Skipped:            ${skippedCount}
+║  ℹ️  Already Unlocked:   ${alreadyUnlockedCount}
+╚════════════════════════════════════════════════════════════╝
+            `);
+
             return { ...map, nodes: updatedNodes };
           }),
+          stateVersion: state.stateVersion + 1, // ✅ Force re-render
         }));
       },
 
@@ -235,8 +273,11 @@ export const useRoadmapStore = create<RoadmapStore>()(
         // Update status to completed
         get().updateNodeStatus(roadmapId, nodeId, "completed");
 
-        // Unlock next nodes
-        get().unlockNextNode(roadmapId, nodeId);
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          // Unlock next nodes
+          get().unlockNextNode(roadmapId, nodeId);
+        }, 100);
       },
 
       saveNodePosition: (roadmapId, nodeId, position) => {
@@ -271,6 +312,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
           return {
             customPositions: newCustomPositions,
+            stateVersion: state.stateVersion + 1,
           };
         });
       },
@@ -302,6 +344,14 @@ export const useRoadmapStore = create<RoadmapStore>()(
         set({
           _hasHydrated: state,
         });
+      },
+
+      // ✅ NEW: Force update method
+      forceUpdate: () => {
+        console.log("[Store] 🔄 Force updating state");
+        set((state) => ({
+          stateVersion: state.stateVersion + 1,
+        }));
       },
     }),
     {
@@ -350,3 +400,9 @@ export const selectGetNodePositions = (state: RoadmapStore) =>
 
 export const selectResetNodePositions = (state: RoadmapStore) =>
   state.resetNodePositions;
+
+// ✅ NEW: Select state version
+export const selectStateVersion = (state: RoadmapStore) => state.stateVersion;
+
+// ✅ NEW: Select force update
+export const selectForceUpdate = (state: RoadmapStore) => state.forceUpdate;

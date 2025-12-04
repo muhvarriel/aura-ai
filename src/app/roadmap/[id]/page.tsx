@@ -22,6 +22,7 @@ import {
   selectCompleteNode,
   selectCacheContent,
   selectGetContent,
+  selectStateVersion, // ✅ NEW: Import state version selector
 } from "@/infrastructure/store/roadmap-store";
 import RoadmapGraph from "@/presentation/features/roadmap/RoadmapGraph";
 import ContentDrawer from "@/presentation/features/learning/ContentDrawer";
@@ -34,7 +35,7 @@ import {
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP PAGE - ENHANCED VERSION WITH QUIZ UNLOCK FIX
+ * ROADMAP PAGE - OPTIMIZED WITH PROPER STATE MANAGEMENT
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -184,7 +185,7 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
 }
 
 /**
- * ✅ NEW: Generate consistent cache key
+ * Generate consistent cache key
  */
 function generateCacheKey(nodeId: string): string {
   return `content::${nodeId}`;
@@ -296,7 +297,7 @@ const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
 );
 
 /**
- * ✅ NEW: Quiz completion success toast
+ * ✅ IMPROVED: Quiz completion success toast with better animation
  */
 const QuizSuccessToast: React.FC<{
   show: boolean;
@@ -308,12 +309,21 @@ const QuizSuccessToast: React.FC<{
         initial={{ opacity: 0, y: -50, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -50, scale: 0.9 }}
-        className="fixed top-24 right-6 z-50 bg-green-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
+        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+        className="fixed top-24 right-6 z-[60] bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border-2 border-emerald-400"
       >
-        <CheckCircle2 size={24} />
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: 0.2, type: "spring", damping: 15 }}
+        >
+          <CheckCircle2 size={28} />
+        </motion.div>
         <div>
-          <p className="font-semibold">Quiz Completed!</p>
-          <p className="text-sm opacity-90">{nodeName} unlocked next nodes</p>
+          <p className="font-bold text-lg">Quiz Completed!</p>
+          <p className="text-sm opacity-95">
+            {nodeName} - Next nodes unlocked 🎉
+          </p>
         </div>
       </motion.div>
     )}
@@ -343,19 +353,19 @@ const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -10 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="absolute top-14 right-6 z-50 bg-white/95 backdrop-blur-xl border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden min-w-[200px]"
+          className="absolute top-14 right-6 z-50 bg-white/95 backdrop-blur-xl border-2 border-neutral-200 rounded-2xl shadow-2xl overflow-hidden min-w-[220px]"
         >
           <div className="py-2">
-            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm text-neutral-700 hover:text-black">
+            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm font-medium text-neutral-700 hover:text-black">
               <Share2 size={16} />
               <span>Share Progress</span>
             </button>
-            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm text-neutral-700 hover:text-black">
+            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm font-medium text-neutral-700 hover:text-black">
               <Download size={16} />
               <span>Export PDF</span>
             </button>
             <div className="my-1 border-t border-neutral-100" />
-            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm text-neutral-700 hover:text-black">
+            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm font-medium text-neutral-700 hover:text-black">
               <Home size={16} />
               <span>Dashboard</span>
             </button>
@@ -376,11 +386,13 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false); // ✅ NEW
-  const [graphRefreshKey, setGraphRefreshKey] = useState(0); // ✅ NEW: Force graph re-render
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
+
+  // ✅ NEW: Watch state version for automatic re-renders
+  const stateVersion = useRoadmapStore(selectStateVersion);
 
   const params = useParams();
   const roadmapId = params.id as string;
@@ -411,25 +423,29 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const currentNode =
     roadmap?.nodes.find((n) => n.id === selectedNodeId) || null;
 
+  // ✅ NEW: Log state version changes
+  useEffect(() => {
+    console.log(`[RoadmapPage] 🔄 State version updated: ${stateVersion}`);
+  }, [stateVersion]);
+
   // Node click handler
   const handleNodeClick = useCallback((nodeId: string) => {
-    console.log(`[RoadmapPage] Node clicked: ${nodeId}`);
+    console.log(`[RoadmapPage] 🖱️ Node clicked: ${nodeId}`);
     setSelectedNodeId(nodeId);
     setIsDrawerOpen(true);
   }, []);
 
-  // ✅ FIX: Content fetcher with consistent cache key
+  // Content fetcher with consistent cache key
   const fetchContent = useCallback(
     async (
       topic: string,
       nodeTitle: string,
     ): Promise<LearningContent | null> => {
       if (!selectedNodeId) {
-        console.warn("[Fetch Content] No node selected");
+        console.warn("[Fetch Content] ⚠️ No node selected");
         return null;
       }
 
-      // ✅ FIX: Use consistent cache key
       const cacheKey = generateCacheKey(selectedNodeId);
       const cached = getCachedContent(cacheKey);
       if (cached) {
@@ -483,7 +499,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           quizzes: mappedQuizzes,
         };
 
-        // ✅ FIX: Cache with consistent key
         cacheContent(cacheKey, content);
         return content;
       } catch (error) {
@@ -499,30 +514,39 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     [selectedNodeId, getCachedContent, cacheContent],
   );
 
-  // ✅ FIX: Quiz completion handler with graph refresh
+  // ✅ IMPROVED: Quiz completion handler with better UX
   const handleQuizComplete = useCallback(
     (score: number) => {
       if (!selectedNodeId || !roadmap) {
-        console.warn("[Quiz Complete] Missing required data");
+        console.warn("[Quiz Complete] ⚠️ Missing required data");
         return;
       }
 
-      console.log(
-        `[Quiz Complete] 🎯 Node: ${selectedNodeId}, Score: ${score}`,
-      );
+      const currentNodeLabel =
+        roadmap.nodes.find((n) => n.id === selectedNodeId)?.label ||
+        "Unknown Node";
 
-      // Complete node and unlock next
+      console.log(`
+╔════════════════════════════════════════════════════════════╗
+║            🎯 QUIZ COMPLETED                               ║
+╠════════════════════════════════════════════════════════════╣
+║  Node:    ${selectedNodeId}
+║  Label:   ${currentNodeLabel}
+║  Score:   ${score}%
+╚════════════════════════════════════════════════════════════╝
+      `);
+
+      // Complete node (this will trigger unlock in store)
       completeNode(roadmap.id, selectedNodeId);
 
-      // ✅ NEW: Show success toast
-      setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 3000);
-
-      // ✅ NEW: Force graph re-render to show updated node statuses
-      setGraphRefreshKey((prev) => prev + 1);
+      // Show success toast with slight delay for better UX
+      setTimeout(() => {
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 4000);
+      }, 300);
 
       console.log(
-        `[Quiz Complete] ✅ Node completed, next nodes unlocked, graph refreshed`,
+        `[Quiz Complete] ✅ Node marked as completed, unlock process triggered`,
       );
     },
     [selectedNodeId, roadmap, completeNode],
@@ -552,7 +576,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden relative">
       <div className="absolute inset-0 bg-gradient-to-br from-white via-neutral-50 to-white -z-10" />
 
-      {/* ✅ NEW: Success Toast */}
+      {/* Success Toast */}
       <QuizSuccessToast
         show={showSuccessToast}
         nodeName={currentNode?.label || "Node"}
@@ -571,16 +595,16 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
             whileHover={{ scale: 1.05, rotate: -5 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => router.push("/")}
-            className="h-11 w-11 flex items-center justify-center rounded-full border-2 border-neutral-200 bg-white/90 backdrop-blur-sm hover:bg-black hover:border-black hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
+            className="h-12 w-12 flex items-center justify-center rounded-full border-2 border-neutral-200 bg-white/95 backdrop-blur-sm hover:bg-black hover:border-black hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </motion.button>
 
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, type: "spring", damping: 20 }}
-            className="glass p-5 rounded-3xl border-2 border-neutral-100 shadow-2xl max-w-md backdrop-blur-xl"
+            className="glass p-5 rounded-3xl border-2 border-neutral-100 shadow-2xl max-w-md backdrop-blur-xl bg-white/95"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -588,8 +612,8 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
               transition={{ delay: 0.3 }}
               className="flex items-center gap-2 mb-2"
             >
-              <Sparkles size={14} className="text-neutral-400" />
-              <span className="text-xs font-bold tracking-widest uppercase text-neutral-400">
+              <Sparkles size={14} className="text-neutral-500" />
+              <span className="text-xs font-bold tracking-widest uppercase text-neutral-500">
                 Current Path
               </span>
             </motion.div>
@@ -598,7 +622,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="font-serif text-2xl md:text-3xl font-medium leading-tight text-black mb-4"
+              className="font-serif text-2xl md:text-3xl font-semibold leading-tight text-black mb-4"
             >
               {roadmap.topic}
             </motion.h1>
@@ -609,20 +633,20 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
               transition={{ delay: 0.5 }}
               className="flex items-center gap-3"
             >
-              <div className="flex-1 h-2.5 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
+              <div className="flex-1 h-3 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
                 <motion.div
+                  key={roadmap.progress} // ✅ NEW: Key ensures re-animation on progress change
                   initial={{ width: 0 }}
                   animate={{ width: `${roadmap.progress}%` }}
-                  transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                   className="h-full rounded-full relative"
                   style={{
                     background:
-                      "linear-gradient(90deg, #000000 0%, #404040 50%, #000000 100%)",
-                    backgroundSize: "200% 100%",
+                      "linear-gradient(90deg, #10b981 0%, #059669 100%)",
                   }}
                 >
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
                     animate={{
                       x: ["-100%", "100%"],
                     }}
@@ -635,10 +659,11 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
                 </motion.div>
               </div>
               <motion.span
+                key={roadmap.progress} // ✅ NEW: Trigger animation on progress change
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.6 }}
-                className="text-sm font-mono font-bold text-neutral-700 min-w-[45px] text-right"
+                className="text-sm font-mono font-bold text-neutral-700 min-w-[50px] text-right"
               >
                 {roadmap.progress}%
               </motion.span>
@@ -657,9 +682,9 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
             whileHover={{ rotate: 90, scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="h-11 w-11 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-all duration-300 shadow-2xl hover:shadow-xl"
+            className="h-12 w-12 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-all duration-300 shadow-2xl hover:shadow-xl"
           >
-            <MoreHorizontal size={20} />
+            <MoreHorizontal size={22} />
           </motion.button>
 
           <MenuDropdown
@@ -669,9 +694,9 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         </motion.div>
       </header>
 
-      {/* Graph Canvas - ✅ NEW: Added key prop to force re-render */}
+      {/* ✅ IMPROVED: Graph Canvas with state version key for automatic re-render */}
       <motion.div
-        key={graphRefreshKey}
+        key={stateVersion} // ✅ NEW: Use stateVersion instead of manual refresh key
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.8 }}

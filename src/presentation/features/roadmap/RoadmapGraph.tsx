@@ -22,12 +22,12 @@ import "@xyflow/react/dist/style.css";
 
 import CustomNode from "./CustomNode";
 import { getGraphLayout } from "@/lib/graph-layout";
-import { RoadmapNode, RoadmapEdge, NodeStatus } from "@/core/entities/roadmap"; // ✅ FIX: Import RoadmapEdge
+import { RoadmapNode, RoadmapEdge, NodeStatus } from "@/core/entities/roadmap";
 import { useRoadmapStore } from "@/infrastructure/store/roadmap-store";
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP GRAPH - ENHANCED VERSION WITH DRAG-DROP & EDGES SUPPORT
+ * ROADMAP GRAPH - POLISHED VERSION
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -35,10 +35,9 @@ const nodeTypes: NodeTypes = {
   custom: CustomNode,
 };
 
-// ✅ FIX: Add edges to props
 interface RoadmapGraphProps {
   nodes: RoadmapNode[];
-  edges?: RoadmapEdge[]; // ✅ NEW: Optional for backward compatibility
+  edges?: RoadmapEdge[];
   onNodeClick: (nodeId: string) => void;
   roadmapId: string;
 }
@@ -52,7 +51,7 @@ type CustomNodeData = {
 };
 
 /**
- * Custom Animated Edge Component
+ * ✅ IMPROVED: Custom Animated Edge with better visibility
  */
 const AnimatedEdge: React.FC<EdgeProps> = ({
   id,
@@ -85,8 +84,8 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
         id={id}
         style={{
           ...style,
-          stroke: isCompleted ? "#000000" : isActive ? "#525252" : "#e5e5e5",
-          strokeWidth: isCompleted ? 3 : 2,
+          stroke: isCompleted ? "#10b981" : isActive ? "#3b82f6" : "#d1d5db",
+          strokeWidth: isCompleted ? 3 : isActive ? 3 : 2,
           transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
         className="react-flow__edge-path"
@@ -96,16 +95,24 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
 
       {isActive && (
         <>
-          <circle r="3" fill={isCompleted ? "#000000" : "#525252"}>
+          <circle
+            r="4"
+            fill={isCompleted ? "#10b981" : "#3b82f6"}
+            opacity="0.8"
+          >
             <animateMotion dur="3s" repeatCount="indefinite" path={edgePath} />
             <animate
               attributeName="opacity"
-              values="0;1;0"
+              values="0;0.8;0"
               dur="3s"
               repeatCount="indefinite"
             />
           </circle>
-          <circle r="3" fill={isCompleted ? "#000000" : "#525252"}>
+          <circle
+            r="4"
+            fill={isCompleted ? "#10b981" : "#3b82f6"}
+            opacity="0.8"
+          >
             <animateMotion
               dur="3s"
               repeatCount="indefinite"
@@ -114,7 +121,7 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
             />
             <animate
               attributeName="opacity"
-              values="0;1;0"
+              values="0;0.8;0"
               dur="3s"
               repeatCount="indefinite"
               begin="1.5s"
@@ -126,9 +133,9 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
       {isCompleted && (
         <path
           style={{
-            stroke: "#000000",
-            strokeWidth: 6,
-            opacity: 0.1,
+            stroke: "#10b981",
+            strokeWidth: 8,
+            opacity: 0.15,
             filter: "blur(4px)",
           }}
           d={edgePath}
@@ -144,31 +151,23 @@ const edgeTypes = {
 };
 
 /**
- * Multi-layer Background Component
+ * ✅ IMPROVED: Simplified background - less visual noise
  */
 const MultiLayerBackground: React.FC = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     <Background
-      id="bg-1"
-      color="#e5e5e5"
-      gap={48}
-      size={1}
-      variant={BackgroundVariant.Lines}
-      style={{ opacity: 0.15 }}
-    />
-    <Background
-      id="bg-2"
-      color="#000000"
-      gap={16}
-      size={0.5}
+      id="bg-dots"
+      color="#d1d5db"
+      gap={24}
+      size={0.8}
       variant={BackgroundVariant.Dots}
-      style={{ opacity: 0.08 }}
+      style={{ opacity: 0.25 }}
     />
     <div
       className="absolute inset-0"
       style={{
         background:
-          "radial-gradient(circle at 50% 50%, transparent 0%, rgba(255,255,255,0.4) 100%)",
+          "radial-gradient(circle at 50% 50%, transparent 0%, rgba(255,255,255,0.5) 100%)",
         pointerEvents: "none",
       }}
     />
@@ -176,7 +175,7 @@ const MultiLayerBackground: React.FC = () => (
 );
 
 /**
- * Graph Stats Panel Component
+ * ✅ IMPROVED: Stats Panel with better contrast
  */
 const StatsPanel: React.FC<{
   totalNodes: number;
@@ -192,50 +191,52 @@ const StatsPanel: React.FC<{
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-white/90 backdrop-blur-md border border-neutral-200 rounded-2xl px-5 py-4 shadow-xl"
+        className="bg-white/95 backdrop-blur-xl border-2 border-neutral-200 rounded-2xl px-5 py-4 shadow-2xl"
       >
-        <div className="flex flex-col gap-3 min-w-[180px]">
+        <div className="flex flex-col gap-3 min-w-[200px]">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
                 Progress
               </span>
-              <span className="text-sm font-bold text-black">{progress}%</span>
+              <span className="text-base font-bold text-black">
+                {progress}%
+              </span>
             </div>
-            <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1, ease: "circOut" }}
-                className="h-full bg-black rounded-full"
+                className="h-full rounded-full"
                 style={{
                   background:
-                    "linear-gradient(90deg, #000000 0%, #404040 100%)",
+                    "linear-gradient(90deg, #10b981 0%, #059669 100%)",
                 }}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-100">
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t-2 border-neutral-100">
             <div className="text-center">
-              <div className="text-lg font-bold text-black">{totalNodes}</div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wide">
+              <div className="text-xl font-bold text-black">{totalNodes}</div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wide font-semibold">
                 Total
               </div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-green-600">
+              <div className="text-xl font-bold text-emerald-600">
                 {completedNodes}
               </div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wide">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wide font-semibold">
                 Done
               </div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">
+              <div className="text-xl font-bold text-blue-600">
                 {unlockedNodes}
               </div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wide">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wide font-semibold">
                 Active
               </div>
             </div>
@@ -253,14 +254,14 @@ const ResetLayoutButton: React.FC<{
   onReset: () => void;
 }> = ({ onReset }) => {
   return (
-    <Panel position="top-left" className="m-6 pl-16">
+    <Panel position="top-left" className="m-6 pl-20 pt-3">
       <motion.button
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={onReset}
-        className="bg-white/90 backdrop-blur-md border border-neutral-200 rounded-xl px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-black"
+        className="bg-white/95 backdrop-blur-xl border-2 border-neutral-200 rounded-xl px-4 py-2.5 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-black hover:border-black"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -285,11 +286,11 @@ const ResetLayoutButton: React.FC<{
 };
 
 /**
- * ✅ FIX: RoadmapGraph Component with Edges Support
+ * RoadmapGraph Component
  */
 function RoadmapGraph({
   nodes,
-  edges = [], // ✅ FIX: Add edges with default empty array
+  edges = [],
   onNodeClick,
   roadmapId,
 }: RoadmapGraphProps) {
@@ -307,7 +308,7 @@ function RoadmapGraph({
     return getNodePositions(roadmapId);
   }, [roadmapId, getNodePositions]);
 
-  // ✅ FIX: Pass edges as second parameter to getGraphLayout
+  // Pass edges as second parameter to getGraphLayout
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
     console.log("🔄 Recalculating graph layout", {
       nodeCount: nodes.length,
@@ -315,7 +316,6 @@ function RoadmapGraph({
       hasCustomPositions: !!customPositions,
     });
 
-    // ✅ FIX: Correct parameter order - nodes, edges, customPositions
     const layout = getGraphLayout(nodes, edges, customPositions);
 
     const enhancedEdges = layout.reactFlowEdges.map((edge) => {
@@ -349,12 +349,12 @@ function RoadmapGraph({
     return { total, completed, unlocked };
   }, [nodes]);
 
-  // Enhanced node click handler with better logging
+  // Enhanced node click handler
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
       const nodeData = node.data as CustomNodeData;
 
-      console.log(`[RoadmapGraph] Node clicked:`, {
+      console.log(`[RoadmapGraph] 🖱️ Node clicked:`, {
         id: node.id,
         label: nodeData.label,
         status: nodeData.status,
@@ -374,7 +374,7 @@ function RoadmapGraph({
   // Handle node drag stop - save position
   const handleNodeDragStop = useCallback(
     (event: React.MouseEvent | React.TouchEvent, node: Node) => {
-      console.log(`[RoadmapGraph] Node dragged:`, {
+      console.log(`[RoadmapGraph] 📍 Node dragged:`, {
         id: node.id,
         position: node.position,
       });
@@ -387,12 +387,11 @@ function RoadmapGraph({
     [roadmapId, saveNodePosition],
   );
 
-  // ✅ FIX: Handle reset layout with correct parameter order
+  // Handle reset layout with correct parameter order
   const handleResetLayout = useCallback(() => {
-    console.log("[RoadmapGraph] Resetting layout to default");
+    console.log("[RoadmapGraph] 🔄 Resetting layout to default");
     resetNodePositions(roadmapId);
 
-    // ✅ FIX: Pass edges to getGraphLayout
     const defaultLayout = getGraphLayout(nodes, edges);
     setNodes(defaultLayout.reactFlowNodes);
   }, [roadmapId, resetNodePositions, nodes, edges, setNodes]);
@@ -414,16 +413,16 @@ function RoadmapGraph({
       edgeTypes,
       fitView: true,
       fitViewOptions: {
-        padding: 0.2,
+        padding: 0.25,
         duration: 800,
       },
-      minZoom: 0.3,
-      maxZoom: 2,
+      minZoom: 0.25,
+      maxZoom: 1.8,
       defaultViewport: { x: 0, y: 0, zoom: 1 },
       attributionPosition: "bottom-right" as const,
       proOptions: { hideAttribution: true },
       snapToGrid: true,
-      snapGrid: [16, 16] as [number, number],
+      snapGrid: [20, 20] as [number, number],
       deleteKeyCode: null,
       selectionKeyCode: null,
       multiSelectionKeyCode: null,
@@ -448,7 +447,7 @@ function RoadmapGraph({
   );
 
   return (
-    <div className="w-full h-full min-h-[600px] bg-white relative">
+    <div className="w-full h-full min-h-[600px] bg-gradient-to-br from-neutral-50 to-white relative">
       <ReactFlow {...reactFlowProps}>
         <MultiLayerBackground />
 
@@ -463,38 +462,38 @@ function RoadmapGraph({
         <Controls
           position="bottom-left"
           showInteractive={false}
-          className="!bg-white/90 !backdrop-blur-md !border-neutral-200 !shadow-2xl !rounded-2xl !m-6 !overflow-hidden [&>button]:!bg-white [&>button]:!border-b [&>button]:!border-b-neutral-100 [&>button]:!text-black [&>button:hover]:!bg-neutral-50 [&>button]:!transition-all [&>button]:!duration-200"
+          className="!bg-white/95 !backdrop-blur-xl !border-2 !border-neutral-200 !shadow-2xl !rounded-2xl !m-6 !overflow-hidden [&>button]:!bg-white [&>button]:!border-b-2 [&>button]:!border-b-neutral-100 [&>button]:!text-black [&>button:hover]:!bg-neutral-50 [&>button]:!transition-all [&>button]:!duration-200 [&>button]:!font-semibold"
         />
 
         <MiniMap
           position="bottom-right"
-          className="!bg-white/90 !backdrop-blur-md !border-2 !border-neutral-200 !shadow-2xl !rounded-2xl !m-6 !overflow-hidden"
+          className="!bg-white/95 !backdrop-blur-xl !border-2 !border-neutral-200 !shadow-2xl !rounded-2xl !m-6 !overflow-hidden"
           style={{
-            width: 200,
-            height: 150,
+            width: 220,
+            height: 160,
           }}
           nodeColor={(node) => {
             const nodeData = node.data as CustomNodeData;
             switch (nodeData.status) {
               case "completed":
-                return "#000000";
+                return "#10b981";
               case "unlocked":
                 return "#3b82f6";
               case "locked":
-                return "#e5e5e5";
+                return "#d1d5db";
               default:
-                return "#e5e5e5";
+                return "#d1d5db";
             }
           }}
           maskColor="rgba(0, 0, 0, 0.05)"
-          nodeBorderRadius={16}
+          nodeBorderRadius={20}
         />
 
-        <Panel position="bottom-left" className="ml-6 mb-24">
+        <Panel position="bottom-left" className="ml-6 mb-28 pl-16 pb-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-mono shadow-lg"
+            className="bg-black/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-mono shadow-xl"
           >
             Zoom: {Math.round(zoomLevel * 100)}%
           </motion.div>
@@ -504,7 +503,6 @@ function RoadmapGraph({
   );
 }
 
-// ✅ FIX: Update memo comparison to include edges
 export default memo(RoadmapGraph, (prevProps, nextProps) => {
   const nodesEqual =
     prevProps.nodes.length === nextProps.nodes.length &&
@@ -517,7 +515,6 @@ export default memo(RoadmapGraph, (prevProps, nextProps) => {
       );
     });
 
-  // ✅ FIX: Check edges equality
   const edgesEqual =
     (prevProps.edges?.length || 0) === (nextProps.edges?.length || 0) &&
     (prevProps.edges || []).every((edge, idx) => {
