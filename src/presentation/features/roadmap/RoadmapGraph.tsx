@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useCallback, memo, useState } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import {
   ReactFlow,
   Controls,
@@ -23,11 +23,14 @@ import "@xyflow/react/dist/style.css";
 import CustomNode from "./CustomNode";
 import { getGraphLayout } from "@/lib/graph-layout";
 import { RoadmapNode, RoadmapEdge, NodeStatus } from "@/core/entities/roadmap";
-import { useRoadmapStore } from "@/infrastructure/store/roadmap-store";
+import {
+  useRoadmapStore,
+  selectStateVersion,
+} from "@/infrastructure/store/roadmap-store";
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP GRAPH - POLISHED VERSION
+ * ROADMAP GRAPH - FIXED VERSION (NO AGGRESSIVE MEMO)
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -51,7 +54,7 @@ type CustomNodeData = {
 };
 
 /**
- * ✅ IMPROVED: Custom Animated Edge with better visibility
+ * Custom Animated Edge
  */
 const AnimatedEdge: React.FC<EdgeProps> = ({
   id,
@@ -151,7 +154,7 @@ const edgeTypes = {
 };
 
 /**
- * ✅ IMPROVED: Simplified background - less visual noise
+ * Simplified background
  */
 const MultiLayerBackground: React.FC = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -175,7 +178,7 @@ const MultiLayerBackground: React.FC = () => (
 );
 
 /**
- * ✅ IMPROVED: Stats Panel with better contrast
+ * Stats Panel
  */
 const StatsPanel: React.FC<{
   totalNodes: number;
@@ -286,7 +289,7 @@ const ResetLayoutButton: React.FC<{
 };
 
 /**
- * RoadmapGraph Component
+ * RoadmapGraph Component (NO MEMO WRAPPER)
  */
 function RoadmapGraph({
   nodes,
@@ -296,6 +299,9 @@ function RoadmapGraph({
 }: RoadmapGraphProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
 
+  // ✅ CRITICAL: Subscribe to stateVersion for auto re-render
+  const stateVersion = useRoadmapStore(selectStateVersion);
+
   // Get position management functions from store
   const saveNodePosition = useRoadmapStore((state) => state.saveNodePosition);
   const getNodePositions = useRoadmapStore((state) => state.getNodePositions);
@@ -303,17 +309,29 @@ function RoadmapGraph({
     (state) => state.resetNodePositions,
   );
 
+  // ✅ NEW: Log state version changes
+  useEffect(() => {
+    console.log(`[RoadmapGraph] 🔄 State version changed: ${stateVersion}`);
+  }, [stateVersion]);
+
   // Get custom positions from store
   const customPositions = useMemo(() => {
     return getNodePositions(roadmapId);
   }, [roadmapId, getNodePositions]);
 
-  // Pass edges as second parameter to getGraphLayout
+  // ✅ FIXED: Create node status signature for proper re-calculation
+  const nodeStatusSignature = useMemo(() => {
+    return nodes.map((n) => `${n.id}:${n.status}`).join("|");
+  }, [nodes]);
+
+  // ✅ FIXED: Recalculate layout when nodes OR stateVersion changes
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
-    console.log("🔄 Recalculating graph layout", {
+    console.log("🔄 [RoadmapGraph] Recalculating graph layout", {
       nodeCount: nodes.length,
       edgeCount: edges.length,
       hasCustomPositions: !!customPositions,
+      stateVersion,
+      nodeStatusSignature: nodeStatusSignature.substring(0, 50) + "...",
     });
 
     const layout = getGraphLayout(nodes, edges, customPositions);
@@ -336,11 +354,20 @@ function RoadmapGraph({
       reactFlowNodes: layout.reactFlowNodes,
       reactFlowEdges: enhancedEdges,
     };
-  }, [nodes, edges, customPositions]);
+  }, [nodes, edges, customPositions, stateVersion, nodeStatusSignature]); // ✅ Added stateVersion & nodeStatusSignature
 
   const [rfNodes, setNodes, onNodesChange] =
     useNodesState<Node>(reactFlowNodes);
   const [rfEdges, , onEdgesChange] = useEdgesState<Edge>(reactFlowEdges);
+
+  // ✅ FIXED: Update React Flow nodes when reactFlowNodes change
+  useEffect(() => {
+    console.log("[RoadmapGraph] 🔄 Updating React Flow nodes", {
+      count: reactFlowNodes.length,
+      stateVersion,
+    });
+    setNodes(reactFlowNodes);
+  }, [reactFlowNodes, setNodes, stateVersion]);
 
   const stats = useMemo(() => {
     const total = nodes.length;
@@ -387,7 +414,7 @@ function RoadmapGraph({
     [roadmapId, saveNodePosition],
   );
 
-  // Handle reset layout with correct parameter order
+  // Handle reset layout
   const handleResetLayout = useCallback(() => {
     console.log("[RoadmapGraph] 🔄 Resetting layout to default");
     resetNodePositions(roadmapId);
@@ -503,31 +530,5 @@ function RoadmapGraph({
   );
 }
 
-export default memo(RoadmapGraph, (prevProps, nextProps) => {
-  const nodesEqual =
-    prevProps.nodes.length === nextProps.nodes.length &&
-    prevProps.nodes.every((node, idx) => {
-      const nextNode = nextProps.nodes[idx];
-      return (
-        node.id === nextNode.id &&
-        node.status === nextNode.status &&
-        node.label === nextNode.label
-      );
-    });
-
-  const edgesEqual =
-    (prevProps.edges?.length || 0) === (nextProps.edges?.length || 0) &&
-    (prevProps.edges || []).every((edge, idx) => {
-      const nextEdge = nextProps.edges?.[idx];
-      return (
-        edge.id === nextEdge?.id &&
-        edge.source === nextEdge?.source &&
-        edge.target === nextEdge?.target
-      );
-    });
-
-  const callbackEqual = prevProps.onNodeClick === nextProps.onNodeClick;
-  const roadmapIdEqual = prevProps.roadmapId === nextProps.roadmapId;
-
-  return nodesEqual && edgesEqual && callbackEqual && roadmapIdEqual;
-});
+// ✅ REMOVED: No memo wrapper for auto re-render
+export default RoadmapGraph;

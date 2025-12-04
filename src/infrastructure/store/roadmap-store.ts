@@ -21,7 +21,7 @@ interface RoadmapState {
   contentCache: Record<string, LearningContent>;
   customPositions: RoadmapCustomPositions;
   _hasHydrated: boolean;
-  stateVersion: number; // ✅ NEW: Force re-render trigger
+  stateVersion: number; // ✅ Force re-render trigger
 }
 
 // Interface Actions (Function)
@@ -60,11 +60,11 @@ interface RoadmapActions {
   // Hydration Control
   setHasHydrated: (state: boolean) => void;
 
-  // ✅ NEW: Force update
+  // Force update
   forceUpdate: () => void;
 }
 
-// Gabungan State + Actions
+// Combined State + Actions
 type RoadmapStore = RoadmapState & RoadmapActions;
 
 export const useRoadmapStore = create<RoadmapStore>()(
@@ -76,7 +76,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
       contentCache: {},
       customPositions: {},
       _hasHydrated: false,
-      stateVersion: 0, // ✅ NEW
+      stateVersion: 0,
 
       // Actions Implementation
       addRoadmap: (roadmap) => {
@@ -124,12 +124,10 @@ export const useRoadmapStore = create<RoadmapStore>()(
           roadmaps: state.roadmaps.map((map) => {
             if (map.id !== roadmapId) return map;
 
-            // Update specific node status
             const updatedNodes = map.nodes.map((node) =>
               node.id === nodeId ? { ...node, status } : node,
             );
 
-            // Calculate new progress
             const completedCount = updatedNodes.filter(
               (n) => n.status === "completed",
             ).length;
@@ -143,7 +141,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
             return { ...map, nodes: updatedNodes, progress };
           }),
-          stateVersion: state.stateVersion + 1, // ✅ Force re-render
+          stateVersion: state.stateVersion + 1, // ✅ CRITICAL: Force re-render
         }));
       },
 
@@ -177,7 +175,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
           status: currentNode.status,
         });
 
-        // ✅ Use edges to get children
         const edges = roadmap.edges || [];
         if (edges.length === 0) {
           console.warn(
@@ -208,13 +205,11 @@ export const useRoadmapStore = create<RoadmapStore>()(
         let skippedCount = 0;
         let alreadyUnlockedCount = 0;
 
-        // ✅ Validate each child before unlocking
         set((state) => ({
           roadmaps: state.roadmaps.map((map) => {
             if (map.id !== roadmapId) return map;
 
             const updatedNodes = map.nodes.map((node) => {
-              // Only process children of current node
               if (!childrenIds.includes(node.id)) return node;
 
               console.log(
@@ -222,7 +217,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
               );
               console.log(`[Store]    Current status: ${node.status}`);
 
-              // ✅ Check if node can be unlocked (all parents completed)
               const canUnlock = canUnlockNode(node.id, map.nodes, edges);
 
               if (canUnlock && node.status === "locked") {
@@ -261,7 +255,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
             return { ...map, nodes: updatedNodes };
           }),
-          stateVersion: state.stateVersion + 1, // ✅ Force re-render
+          stateVersion: state.stateVersion + 1, // ✅ CRITICAL: Force re-render
         }));
       },
 
@@ -275,7 +269,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
         // Small delay to ensure state is updated
         setTimeout(() => {
-          // Unlock next nodes
           get().unlockNextNode(roadmapId, nodeId);
         }, 100);
       },
@@ -346,7 +339,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
         });
       },
 
-      // ✅ NEW: Force update method
       forceUpdate: () => {
         console.log("[Store] 🔄 Force updating state");
         set((state) => ({
@@ -401,8 +393,6 @@ export const selectGetNodePositions = (state: RoadmapStore) =>
 export const selectResetNodePositions = (state: RoadmapStore) =>
   state.resetNodePositions;
 
-// ✅ NEW: Select state version
 export const selectStateVersion = (state: RoadmapStore) => state.stateVersion;
 
-// ✅ NEW: Select force update
 export const selectForceUpdate = (state: RoadmapStore) => state.forceUpdate;

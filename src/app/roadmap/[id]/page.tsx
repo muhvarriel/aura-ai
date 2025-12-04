@@ -22,7 +22,7 @@ import {
   selectCompleteNode,
   selectCacheContent,
   selectGetContent,
-  selectStateVersion, // ✅ NEW: Import state version selector
+  selectStateVersion,
 } from "@/infrastructure/store/roadmap-store";
 import RoadmapGraph from "@/presentation/features/roadmap/RoadmapGraph";
 import ContentDrawer from "@/presentation/features/learning/ContentDrawer";
@@ -35,15 +35,12 @@ import {
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP PAGE - OPTIMIZED WITH PROPER STATE MANAGEMENT
+ * ROADMAP PAGE - FIXED STATE MANAGEMENT
  * ═══════════════════════════════════════════════════════════════
  */
 
 // --- Type Definitions ---
 
-/**
- * Raw quiz option from API
- */
 type RawQuizOption =
   | string
   | {
@@ -52,9 +49,6 @@ type RawQuizOption =
       isCorrect?: boolean;
     };
 
-/**
- * Raw quiz item from API
- */
 interface RawQuizItem {
   question?: string;
   pertanyaan?: string;
@@ -66,9 +60,6 @@ interface RawQuizItem {
   penjelasan?: string;
 }
 
-/**
- * API response structure
- */
 interface ApiContentResponse {
   data: {
     markdownContent: string;
@@ -77,9 +68,6 @@ interface ApiContentResponse {
   error?: string;
 }
 
-/**
- * Type guards
- */
 function isValidString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -95,9 +83,6 @@ function isStructuredOption(
   );
 }
 
-/**
- * Transform quiz options
- */
 function transformQuizOptions(
   rawOptions: RawQuizOption[] | undefined,
   correctAnswer: string,
@@ -141,9 +126,6 @@ function transformQuizOptions(
     .filter((opt): opt is QuizOption => opt !== null);
 }
 
-/**
- * Transform quiz data
- */
 function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
   if (!Array.isArray(rawQuiz) || rawQuiz.length === 0) {
     console.warn("[Quiz Transform] No quiz data provided");
@@ -184,9 +166,6 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
     .filter((q): q is QuizQuestion => q !== null);
 }
 
-/**
- * Generate consistent cache key
- */
 function generateCacheKey(nodeId: string): string {
   return `content::${nodeId}`;
 }
@@ -297,7 +276,7 @@ const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
 );
 
 /**
- * ✅ IMPROVED: Quiz completion success toast with better animation
+ * Quiz completion success toast
  */
 const QuizSuccessToast: React.FC<{
   show: boolean;
@@ -391,7 +370,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
 
-  // ✅ NEW: Watch state version for automatic re-renders
+  // ✅ Subscribe to state version
   const stateVersion = useRoadmapStore(selectStateVersion);
 
   const params = useParams();
@@ -423,10 +402,18 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const currentNode =
     roadmap?.nodes.find((n) => n.id === selectedNodeId) || null;
 
-  // ✅ NEW: Log state version changes
+  // ✅ Log state version changes
   useEffect(() => {
     console.log(`[RoadmapPage] 🔄 State version updated: ${stateVersion}`);
   }, [stateVersion]);
+
+  // ✅ NEW: Log node status changes
+  useEffect(() => {
+    if (roadmap) {
+      const statusMap = roadmap.nodes.map((n) => `${n.id}:${n.status}`);
+      console.log("[RoadmapPage] 📊 Node status map:", statusMap);
+    }
+  }, [roadmap?.nodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Node click handler
   const handleNodeClick = useCallback((nodeId: string) => {
@@ -435,7 +422,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     setIsDrawerOpen(true);
   }, []);
 
-  // Content fetcher with consistent cache key
+  // Content fetcher
   const fetchContent = useCallback(
     async (
       topic: string,
@@ -514,7 +501,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     [selectedNodeId, getCachedContent, cacheContent],
   );
 
-  // ✅ IMPROVED: Quiz completion handler with better UX
+  // ✅ Quiz completion handler with logging
   const handleQuizComplete = useCallback(
     (score: number) => {
       if (!selectedNodeId || !roadmap) {
@@ -528,18 +515,20 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
 
       console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║            🎯 QUIZ COMPLETED                               ║
+║            🎯 QUIZ COMPLETED [PAGE HANDLER]                ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Node:    ${selectedNodeId}
 ║  Label:   ${currentNodeLabel}
 ║  Score:   ${score}%
+║  State:   v${stateVersion}
 ╚════════════════════════════════════════════════════════════╝
       `);
 
       // Complete node (this will trigger unlock in store)
+      console.log("[Quiz Complete] 🎯 Calling completeNode...");
       completeNode(roadmap.id, selectedNodeId);
 
-      // Show success toast with slight delay for better UX
+      // Show success toast
       setTimeout(() => {
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 4000);
@@ -549,7 +538,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         `[Quiz Complete] ✅ Node marked as completed, unlock process triggered`,
       );
     },
-    [selectedNodeId, roadmap, completeNode],
+    [selectedNodeId, roadmap, completeNode, stateVersion],
   );
 
   // Cleanup on unmount
@@ -635,7 +624,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
             >
               <div className="flex-1 h-3 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
                 <motion.div
-                  key={roadmap.progress} // ✅ NEW: Key ensures re-animation on progress change
+                  key={`progress-${roadmap.progress}-${stateVersion}`} // ✅ Add stateVersion to key
                   initial={{ width: 0 }}
                   animate={{ width: `${roadmap.progress}%` }}
                   transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
@@ -659,7 +648,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
                 </motion.div>
               </div>
               <motion.span
-                key={roadmap.progress} // ✅ NEW: Trigger animation on progress change
+                key={`progress-text-${roadmap.progress}-${stateVersion}`} // ✅ Add stateVersion to key
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.6 }}
@@ -694,9 +683,8 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         </motion.div>
       </header>
 
-      {/* ✅ IMPROVED: Graph Canvas with state version key for automatic re-render */}
+      {/* ✅ Graph Canvas - NO key prop, rely on stateVersion in RoadmapGraph */}
       <motion.div
-        key={stateVersion} // ✅ NEW: Use stateVersion instead of manual refresh key
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.8 }}

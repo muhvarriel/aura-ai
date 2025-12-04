@@ -10,20 +10,10 @@ import { GraphNodeData } from "@/lib/graph-layout";
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * CUSTOM NODE - OPTIMIZED UI VERSION
- * ═══════════════════════════════════════════════════════════════
- * Improvements:
- * - Smaller, more compact node size (220px width)
- * - Better typography hierarchy (16px title, 12px description)
- * - Enhanced status visual feedback
- * - Improved readability and contrast
- * - Smoother animations
+ * CUSTOM NODE - FIXED MEMO COMPARISON
  * ═══════════════════════════════════════════════════════════════
  */
 
-/**
- * Custom node data interface with strict typing
- */
 export interface CustomNodeData {
   readonly label: string;
   readonly status: NodeStatus;
@@ -32,27 +22,18 @@ export interface CustomNodeData {
   readonly estimatedTime?: string;
 }
 
-/**
- * Particle position interface
- */
 interface ParticlePosition {
   id: number;
   x: number;
   y: number;
 }
 
-/**
- * Difficulty badge color mapping
- */
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   Beginner: "bg-emerald-100 text-emerald-700 border-emerald-300",
   Intermediate: "bg-amber-100 text-amber-700 border-amber-300",
   Advanced: "bg-rose-100 text-rose-700 border-rose-300",
 } as const;
 
-/**
- * ✅ IMPROVED: Status-specific styling with better contrast
- */
 const STATUS_STYLES: Record<NodeStatus, string> = {
   locked:
     "bg-gradient-to-br from-neutral-100 to-neutral-50 border-2 border-dashed border-neutral-300 text-neutral-500 cursor-not-allowed opacity-60",
@@ -62,9 +43,6 @@ const STATUS_STYLES: Record<NodeStatus, string> = {
     "bg-gradient-to-br from-emerald-600 to-emerald-700 border-2 border-emerald-500 text-white shadow-lg shadow-emerald-500/30 cursor-pointer",
 } as const;
 
-/**
- * ✅ IMPROVED: Status icon with better visual feedback
- */
 const StatusIcon: React.FC<{ status: NodeStatus }> = ({ status }) => {
   switch (status) {
     case "completed":
@@ -111,9 +89,6 @@ const StatusIcon: React.FC<{ status: NodeStatus }> = ({ status }) => {
   }
 };
 
-/**
- * ✅ IMPROVED: Tooltip with better positioning
- */
 const NodeTooltip: React.FC<{
   difficulty?: DifficultyLevel;
   estimatedTime?: string;
@@ -144,16 +119,12 @@ const NodeTooltip: React.FC<{
             </div>
           )}
         </div>
-        {/* Tooltip arrow */}
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-r border-b border-neutral-700 rotate-45" />
       </div>
     </motion.div>
   );
 };
 
-/**
- * ✅ IMPROVED: Pulse glow effect for unlocked nodes
- */
 const PulseGlow: React.FC = () => (
   <motion.div
     className="absolute inset-0 rounded-3xl bg-blue-400/10"
@@ -169,9 +140,6 @@ const PulseGlow: React.FC = () => (
   />
 );
 
-/**
- * Generate particle positions
- */
 const generateParticlePositions = (): ParticlePosition[] => {
   return [...Array(8)].map((_, i) => ({
     id: i,
@@ -182,9 +150,6 @@ const generateParticlePositions = (): ParticlePosition[] => {
 
 const CELEBRATION_PARTICLES = generateParticlePositions();
 
-/**
- * Celebration particles for completed nodes
- */
 const CelebrationParticles: React.FC = () => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
@@ -216,7 +181,7 @@ const CelebrationParticles: React.FC = () => {
 };
 
 /**
- * ✅ OPTIMIZED: Custom Node Component with improved UI
+ * Custom Node Component
  */
 const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -243,6 +208,11 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
     }
   }, [status]);
 
+  // ✅ Log status changes
+  React.useEffect(() => {
+    console.log(`[CustomNode] Status update: ${label} → ${status}`);
+  }, [label, status]);
+
   return (
     <motion.div
       layout
@@ -254,7 +224,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
       className="relative"
       style={{ willChange: "transform" }}
     >
-      {/* ✅ OPTIMIZED: Main Node Container - smaller, better spacing */}
       <motion.div
         whileHover={
           status === "unlocked"
@@ -284,7 +253,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
 
         <div className="flex flex-col gap-2.5 relative z-10">
           <div className="flex items-start justify-between gap-3">
-            {/* ✅ IMPROVED: Larger, more readable title */}
             <motion.h3
               layout
               className={cn(
@@ -299,7 +267,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
             </div>
           </div>
 
-          {/* ✅ IMPROVED: Better description readability */}
           {description && (
             <motion.p
               layout
@@ -316,7 +283,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
             </motion.p>
           )}
 
-          {/* ✅ IMPROVED: Always visible metadata for non-locked nodes */}
           {status !== "locked" && (difficulty || estimatedTime) && (
             <motion.div className="flex items-center gap-1.5 flex-wrap pt-1">
               {difficulty && (
@@ -355,7 +321,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
           isConnectable={false}
         />
 
-        {/* Shimmer effect on hover for unlocked nodes */}
         {status === "unlocked" && isHovered && (
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
@@ -381,16 +346,26 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
 
 CustomNode.displayName = "CustomNode";
 
+// ✅ FIXED: Memo comparison - force re-render on status change
 export default memo(CustomNode, (prevProps, nextProps) => {
   const prevData = prevProps.data as GraphNodeData;
   const nextData = nextProps.data as GraphNodeData;
 
-  return (
+  // ✅ CRITICAL: Return false when status changes to force re-render
+  if (prevData.status !== nextData.status) {
+    console.log(
+      `[CustomNode Memo] Status changed for ${prevData.label}: ${prevData.status} → ${nextData.status}, forcing re-render`,
+    );
+    return false; // Force re-render
+  }
+
+  // Check other props
+  const isSame =
     prevData.label === nextData.label &&
-    prevData.status === nextData.status &&
     prevData.description === nextData.description &&
     prevData.difficulty === nextData.difficulty &&
     prevData.estimatedTime === nextData.estimatedTime &&
-    prevProps.selected === nextProps.selected
-  );
+    prevProps.selected === nextProps.selected;
+
+  return isSame;
 });
