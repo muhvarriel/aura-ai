@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* 
+  KONFIGURASI TEMA (Tailwind v4)
+  ------------------------------
+  Kita memetakan variabel CSS native ke utility class Tailwind.
+*/
+@theme {
+  /* Typography: Set Outfit sebagai font utama (sans) */
+  --font-sans:
+    var(--font-outfit), ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-@theme inline {
+  /* Custom Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+
+  /* Custom Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+/* 
+  ROOT VARIABLES
+  --------------
+  Mendefinisikan nilai warna dan settingan global.
+*/
+:root {
+  --background: #ffffff;
+  --foreground: #09090b; /* Zinc-950 */
+  --primary: #2563eb; /* Blue-600 */
+  --primary-foreground: #ffffff;
+  --muted: #f4f4f5; /* Zinc-100 */
+  --muted-foreground: #71717a; /* Zinc-500 */
+  --border: #e4e4e7; /* Zinc-200 */
+
+  /* React Flow Specific Vars */
+  --xy-edge-stroke: #cbd5e1;
+  --xy-edge-stroke-width: 2px;
+  --xy-node-border-radius: 12px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #fafafa;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --border: #27272a;
+
+    /* React Flow Dark Mode overrides */
+    --xy-edge-stroke: #4b5563;
   }
 }
 
+/* 
+  BASE STYLES
+  -----------
+*/
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Font-family sudah otomatis dihandle oleh @theme --font-sans di atas */
+  font-feature-settings:
+    "rlig" 1,
+    "calt" 1; /* Optimasi rendering font */
+}
+
+/* 
+  COMPONENT STYLES
+  ----------------
+*/
+
+/* React Flow Custom Node Styling */
+.react-flow__node {
+  @apply shadow-sm transition-shadow duration-200;
+}
+
+/* Efek hover pada node agar lebih interaktif */
+.react-flow__node:hover {
+  @apply shadow-md ring-2 ring-blue-500/20;
+}
+
+.react-flow__handle {
+  @apply w-3 h-3 bg-blue-500 border-2 border-white transition-transform duration-100;
+}
+
+.react-flow__handle:hover {
+  @apply scale-125;
+}
+
+/* Helper Class untuk Markdown Typography (Prose) */
+.prose {
+  @apply text-zinc-800 max-w-none leading-7;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold mb-6 text-blue-600 tracking-tight;
+}
+
+.prose h2 {
+  @apply text-2xl font-semibold mt-8 mb-4 text-zinc-900 tracking-tight;
+}
+
+.prose h3 {
+  @apply text-xl font-semibold mt-6 mb-3 text-zinc-800;
+}
+
+.prose p {
+  @apply mb-5 leading-relaxed text-zinc-600;
+}
+
+.prose ul {
+  @apply list-disc pl-6 mb-5 space-y-2 text-zinc-600;
+}
+
+.prose ol {
+  @apply list-decimal pl-6 mb-5 space-y-2 text-zinc-600;
+}
+
+.prose strong {
+  @apply font-bold text-zinc-900;
+}
+
+.prose code {
+  @apply bg-blue-50 px-1.5 py-0.5 rounded text-sm text-blue-700 font-mono border border-blue-100;
+}
+
+.prose pre {
+  @apply bg-zinc-900 p-5 rounded-xl overflow-x-auto mb-6 border border-zinc-800 shadow-inner;
+}
+
+.prose pre code {
+  @apply bg-transparent text-zinc-100 p-0 border-none text-sm;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-blue-200 pl-4 italic text-zinc-500 my-6;
 }
