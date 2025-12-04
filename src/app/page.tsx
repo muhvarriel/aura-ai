@@ -135,7 +135,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white">
       {/* --- Header / Navigation Placeholder (Aura Style) --- */}
       <header className="fixed top-0 left-0 w-full p-6 flex justify-between items-center z-50">
-        <div className="font-bold text-xl tracking-tight">Aura.Ai</div>
+        <div className="font-bold text-xl tracking-tight">AURA AI</div>
         <button className="px-4 py-2 rounded-full border border-neutral-200 text-sm hover:bg-neutral-100 transition-colors">
           Menu
         </button>
