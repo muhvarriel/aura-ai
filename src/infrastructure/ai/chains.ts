@@ -73,9 +73,9 @@ function salvageJSON(incomplete: string): string {
   let result = incomplete.trim();
 
   // Count unclosed structures
-  let openBraces = (result.match(/{/g) || []).length;
+  const openBraces = (result.match(/{/g) || []).length;
   let closeBraces = (result.match(/}/g) || []).length;
-  let openBrackets = (result.match(/\[/g) || []).length;
+  const openBrackets = (result.match(/\[/g) || []).length;
   let closeBrackets = (result.match(/]/g) || []).length;
 
   // Count quotes to check for unclosed strings

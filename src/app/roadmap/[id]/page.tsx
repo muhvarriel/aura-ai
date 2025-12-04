@@ -216,7 +216,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   // Selectors
   const roadmap = useStore(
     useRoadmapStore,
-    useCallback(selectRoadmapById(paramsId), [paramsId]),
+    useCallback((state) => selectRoadmapById(paramsId)(state), [paramsId]),
   );
 
   const unlockNext = useRoadmapStore(selectUnlockNext);

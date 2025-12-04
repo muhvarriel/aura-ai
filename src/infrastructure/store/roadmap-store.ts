@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Roadmap, RoadmapNode, NodeStatus } from "@/core/entities/roadmap";
+import { Roadmap, NodeStatus } from "@/core/entities/roadmap";
 import { LearningContent } from "@/core/entities/quiz";
 
 // Interface State (Data)

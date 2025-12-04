@@ -3,7 +3,6 @@ import { RoadmapNode, NodeStatus } from "@/core/entities/roadmap";
 
 // --- LAYOUT CONSTANTS ---
 const NODE_WIDTH = 250;
-const NODE_HEIGHT = 100;
 const X_GAP = 50;
 const Y_GAP = 150;
 
@@ -143,10 +142,7 @@ function calculateNodePosition(
  * Create ReactFlow edges from roadmap nodes
  * Optimized: Single pass with style pre-calculation
  */
-function createEdges(
-  nodes: RoadmapNode[],
-  nodeMap: Map<string, RoadmapNode>,
-): Edge[] {
+function createEdges(nodes: RoadmapNode[]): Edge[] {
   const edges: Edge[] = [];
 
   nodes.forEach((node) => {
@@ -249,7 +245,7 @@ export function getGraphLayout(nodes: RoadmapNode[]): LayoutResult {
   const reactFlowNodes = createNodes(nodes, nodeLevels, levelCounts);
 
   // Create ReactFlow edges
-  const reactFlowEdges = createEdges(nodes, nodeMap);
+  const reactFlowEdges = createEdges(nodes);
 
   return {
     reactFlowNodes,
