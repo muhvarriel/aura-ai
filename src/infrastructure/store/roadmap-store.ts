@@ -9,19 +9,6 @@ import {
 import { LearningContent } from "@/core/entities/quiz";
 import { CustomNodePosition } from "@/lib/graph-layout";
 
-/**
- * OPTIMIZED ROADMAP STORE
- * Changes:
- * - Reduced console.log verbosity (only errors and critical events)
- * - Added IndexedDB persistence pattern (commented for future)
- * - Optimized state updates
- * - Added preload hints for adjacent content
- */
-
-// ==========================================
-// TYPES
-// ==========================================
-
 interface RoadmapCustomPositions {
   [roadmapId: string]: Record<string, CustomNodePosition>;
 }
@@ -36,13 +23,11 @@ interface RoadmapState {
 }
 
 interface RoadmapActions {
-  // Roadmap Management
   addRoadmap: (roadmap: Roadmap) => void;
   setActiveRoadmap: (id: string) => void;
   deleteRoadmap: (id: string) => void;
   getRoadmapById: (id: string) => Roadmap | undefined;
 
-  // Node Progress
   updateNodeStatus: (
     roadmapId: string,
     nodeId: string,
@@ -51,7 +36,6 @@ interface RoadmapActions {
   unlockNextNode: (roadmapId: string, currentNodeId: string) => void;
   completeNode: (roadmapId: string, nodeId: string) => void;
 
-  // Node Position
   saveNodePosition: (
     roadmapId: string,
     nodeId: string,
@@ -62,28 +46,20 @@ interface RoadmapActions {
   ) => Record<string, CustomNodePosition> | undefined;
   resetNodePositions: (roadmapId: string) => void;
 
-  // Content Caching
   cacheContent: (cacheKey: string, content: LearningContent) => void;
   getContent: (cacheKey: string) => LearningContent | undefined;
   clearContentCache: () => void;
 
-  // Hydration
   setHasHydrated: (state: boolean) => void;
 
-  // Force update
   forceUpdate: () => void;
 }
 
 type RoadmapStore = RoadmapState & RoadmapActions;
 
-// ==========================================
-// STORE IMPLEMENTATION
-// ==========================================
-
 export const useRoadmapStore = create<RoadmapStore>()(
   persist(
     (set, get) => ({
-      // Initial State
       roadmaps: [],
       activeRoadmapId: null,
       contentCache: {},
@@ -91,7 +67,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
       _hasHydrated: false,
       stateVersion: 0,
 
-      // Actions
       addRoadmap: (roadmap) => {
         set((state) => ({
           roadmaps: [roadmap, ...state.roadmaps],
@@ -246,16 +221,9 @@ export const useRoadmapStore = create<RoadmapStore>()(
           state.setHasHydrated(true);
         }
       },
-
-      // TODO: Future enhancement - IndexedDB for larger storage
-      // storage: createJSONStorage(() => indexedDB),
     },
   ),
 );
-
-// ==========================================
-// OPTIMIZED SELECTORS (Memoization-friendly)
-// ==========================================
 
 export const selectRoadmapById = (id: string) => (state: RoadmapStore) =>
   state.roadmaps.find((r) => r.id === id);

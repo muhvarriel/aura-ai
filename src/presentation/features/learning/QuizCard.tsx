@@ -20,7 +20,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
   const [showResult, setShowResult] = useState(false);
   const [hasCalledComplete, setHasCalledComplete] = useState(false);
 
-  // --- Defensive Checks ---
   if (!questions || questions.length === 0) {
     return (
       <div className="py-12 text-center border-2 border-dashed border-neutral-200 rounded-3xl">
@@ -42,7 +41,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
     );
   }
 
-  // --- Handlers ---
   const handleOptionClick = (optionId: string) => {
     if (isAnswered) return;
     setSelectedOptionId(optionId);
@@ -62,7 +60,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
       setSelectedOptionId(null);
       setIsAnswered(false);
     } else {
-      // FIX: Calculate final score correctly
       const finalScore =
         score +
         (currentQuestion.options.find((o) => o.id === selectedOptionId)
@@ -72,7 +69,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
 
       setShowResult(true);
 
-      // FIX: Only call onComplete once
       if (!hasCalledComplete) {
         setHasCalledComplete(true);
         onComplete(finalScore);
@@ -80,7 +76,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
     }
   };
 
-  // --- Result View (Score Card) ---
   if (showResult) {
     const percentage = Math.round((score / questions.length) * 100);
 
@@ -117,10 +112,8 @@ export const QuizCard: React.FC<QuizCardProps> = ({
     );
   }
 
-  // --- Main Quiz View ---
   return (
     <div className="w-full bg-white">
-      {/* Header: Progress */}
       <div className="flex items-center justify-between mb-8 border-b border-neutral-100 pb-4">
         <span className="font-mono text-xs text-neutral-400">
           {String(currentIndex + 1).padStart(2, "0")} /{" "}
@@ -131,7 +124,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
         </span>
       </div>
 
-      {/* Question */}
       <motion.h3
         key={currentQuestion.id}
         initial={{ opacity: 0, y: 10 }}
@@ -141,13 +133,11 @@ export const QuizCard: React.FC<QuizCardProps> = ({
         {currentQuestion.question}
       </motion.h3>
 
-      {/* Options Grid */}
       <div className="space-y-3">
         {currentQuestion.options.map((option) => {
           const isSelected = selectedOptionId === option.id;
           const isCorrect = option.isCorrect;
 
-          // --- Logic Styling Aura ---
           let containerClass =
             "border-neutral-200 hover:border-black hover:bg-neutral-50 cursor-pointer";
           let textClass = "text-neutral-600";
@@ -155,27 +145,22 @@ export const QuizCard: React.FC<QuizCardProps> = ({
 
           if (isAnswered) {
             if (isSelected && isCorrect) {
-              // User Benar: Hitam Solid
               containerClass = "bg-black border-black shadow-lg scale-[1.02]";
               textClass = "text-white font-medium";
               icon = <Check className="w-5 h-5 text-white" />;
             } else if (isSelected && !isCorrect) {
-              // User Salah: Border Merah Tipis (Minimal)
               containerClass = "bg-white border-red-500";
               textClass = "text-red-600";
               icon = <X className="w-5 h-5 text-red-500" />;
             } else if (!isSelected && isCorrect) {
-              // Jawaban Seharusnya: Border Hitam Dashed
               containerClass = "bg-white border-black border-dashed opacity-60";
               textClass = "text-black font-medium";
               icon = <Check className="w-5 h-5 text-black" />;
             } else {
-              // Opsi Lain: Fade Out
               containerClass =
                 "border-transparent bg-neutral-50 opacity-40 cursor-not-allowed";
             }
           } else if (isSelected) {
-            // State Selected sebelum Submit (jika ada logic confirm, tapi di sini instant)
             containerClass = "border-black ring-1 ring-black";
           }
 
@@ -203,7 +188,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
         })}
       </div>
 
-      {/* Explanation & Next Action */}
       <AnimatePresence>
         {isAnswered && (
           <motion.div
@@ -212,7 +196,6 @@ export const QuizCard: React.FC<QuizCardProps> = ({
             exit={{ opacity: 0, height: 0 }}
             className="mt-8 overflow-hidden"
           >
-            {/* Editorial Note Box */}
             <div className="pl-5 border-l-2 border-black py-2 mb-6">
               <span className="block text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-1">
                 Insight

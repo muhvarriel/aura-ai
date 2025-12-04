@@ -31,7 +31,6 @@ import { useRoadmapStore } from "@/infrastructure/store/roadmap-store";
 import { Roadmap, RoadmapNode, RoadmapEdge } from "@/core/entities/roadmap";
 import { SyllabusResponse } from "@/infrastructure/ai/schemas";
 
-// --- UI CONSTANTS ---
 const SUGGESTIONS = [
   { label: "Artificial Intelligence" },
   { label: "Web3 Development" },
@@ -39,10 +38,8 @@ const SUGGESTIONS = [
   { label: "Cybersecurity" },
 ];
 
-// Floating particles configuration
 const PARTICLES_COUNT = 20;
 
-// --- TOAST NOTIFICATION TYPES ---
 type ToastType = "success" | "error" | "info";
 
 interface Toast {
@@ -52,7 +49,6 @@ interface Toast {
   description?: string;
 }
 
-// ✅ FIX: Seeded random for deterministic values (fixes hydration)
 function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
@@ -62,7 +58,6 @@ function seededRandom(seed: number): number {
  * ✅ FIXED: Floating Particle Component (Deterministic)
  */
 const FloatingParticle: React.FC<{ index: number }> = ({ index }) => {
-  // ✅ FIX: Use index-based seeding for deterministic values
   const randomX = useMemo(() => seededRandom(index * 100) * 100, [index]);
   const randomDelay = useMemo(() => seededRandom(index * 200) * 2, [index]);
   const randomDuration = useMemo(
@@ -92,15 +87,10 @@ const FloatingParticle: React.FC<{ index: number }> = ({ index }) => {
   );
 };
 
-/**
- * Animated Background Grid
- */
 const AnimatedBackground: React.FC = () => {
   const [isMounted, setIsMounted] = useState(false);
 
-  // ✅ FIX: Use useLayoutEffect or conditional rendering without setState in effect
   useEffect(() => {
-    // Use requestAnimationFrame to defer the state update
     const timer = requestAnimationFrame(() => {
       setIsMounted(true);
     });
@@ -110,7 +100,6 @@ const AnimatedBackground: React.FC = () => {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Gradient Orbs */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-neutral-100 to-transparent rounded-full blur-3xl opacity-50"
         animate={{
@@ -138,7 +127,6 @@ const AnimatedBackground: React.FC = () => {
         }}
       />
 
-      {/* ✅ FIX: Conditionally render particles after mount */}
       {isMounted &&
         Array.from({ length: PARTICLES_COUNT }).map((_, i) => (
           <FloatingParticle key={i} index={i} />
@@ -147,9 +135,6 @@ const AnimatedBackground: React.FC = () => {
   );
 };
 
-/**
- * ✅ FIXED: Toast Notification Component with Enhanced Animations
- */
 const ToastNotification: React.FC<{
   toast: Toast;
   onClose: () => void;
@@ -224,9 +209,6 @@ const ToastNotification: React.FC<{
   );
 };
 
-/**
- * Toast Container
- */
 const ToastContainer: React.FC<{
   toasts: Toast[];
   onRemove: (id: string) => void;
@@ -246,9 +228,6 @@ const ToastContainer: React.FC<{
   );
 };
 
-/**
- * Build edges array from parent-child relationships
- */
 function buildEdgesFromNodes(nodes: RoadmapNode[]): RoadmapEdge[] {
   const edges: RoadmapEdge[] = [];
 
@@ -268,9 +247,6 @@ function buildEdgesFromNodes(nodes: RoadmapNode[]): RoadmapEdge[] {
   return edges;
 }
 
-/**
- * Magnetic Button Component
- */
 const MagneticButton: React.FC<{
   children: React.ReactNode;
   onClick?: () => void;
@@ -328,9 +304,6 @@ const MagneticButton: React.FC<{
   );
 };
 
-/**
- * Main Landing Page Component
- */
 export default function LandingPage() {
   const router = useRouter();
   const addRoadmap = useRoadmapStore((state) => state.addRoadmap);
@@ -340,7 +313,6 @@ export default function LandingPage() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
 
-  // Mouse position tracking for parallax effect
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -361,9 +333,6 @@ export default function LandingPage() {
   const parallaxX = useTransform(mouseX, [-20, 20], [-10, 10]);
   const parallaxY = useTransform(mouseY, [-20, 20], [-10, 10]);
 
-  /**
-   * Add toast notification
-   */
   const addToast = useCallback(
     (type: ToastType, message: string, description?: string) => {
       const id = uuidv4();
@@ -378,16 +347,10 @@ export default function LandingPage() {
     [],
   );
 
-  /**
-   * Remove toast manually
-   */
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  /**
-   * Handle form submission
-   */
   const handleGenerate = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -557,22 +520,16 @@ export default function LandingPage() {
     [topic, addRoadmap, router, addToast],
   );
 
-  /**
-   * Handle suggestion click
-   */
   const handleSuggestionClick = useCallback((suggestion: string) => {
     setTopic(suggestion);
   }, []);
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white relative overflow-hidden">
-      {/* Animated Background */}
       <AnimatedBackground />
 
-      {/* Toast Container */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Header with Animation */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -606,7 +563,6 @@ export default function LandingPage() {
         </MagneticButton>
       </motion.header>
 
-      {/* Main Content */}
       <main className="flex flex-col items-center justify-center min-h-screen p-6 relative">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -615,7 +571,6 @@ export default function LandingPage() {
           style={{ x: parallaxX, y: parallaxY }}
           className="max-w-4xl w-full text-center space-y-12 relative z-10"
         >
-          {/* Badge with Pulse Effect */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -653,7 +608,6 @@ export default function LandingPage() {
             </motion.span>
           </motion.div>
 
-          {/* Heading with Character Animation */}
           <div className="space-y-6">
             <motion.h1
               className="font-serif text-6xl md:text-8xl font-medium leading-[0.9] tracking-tight text-black"
@@ -704,7 +658,6 @@ export default function LandingPage() {
             </motion.p>
           </div>
 
-          {/* Enhanced Form with Focus Effects */}
           <motion.form
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -779,7 +732,6 @@ export default function LandingPage() {
                   )}
                 </AnimatePresence>
 
-                {/* Ripple effect on click */}
                 <motion.div
                   className="absolute inset-0 bg-white rounded-full"
                   initial={{ scale: 0, opacity: 0.5 }}
@@ -790,7 +742,6 @@ export default function LandingPage() {
             </motion.div>
           </motion.form>
 
-          {/* ✅ FIXED: Enhanced Suggestions (div instead of p) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -844,7 +795,6 @@ export default function LandingPage() {
           </motion.div>
         </motion.div>
 
-        {/* Footer with Typing Effect */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

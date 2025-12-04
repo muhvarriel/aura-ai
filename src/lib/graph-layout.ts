@@ -6,13 +6,11 @@ import {
   getChildNodeIds,
 } from "@/core/entities/roadmap";
 
-// ✅ IMPROVED: Better spacing constants for cleaner layout
-const NODE_WIDTH = 220; // Reduced from 250 to match new CustomNode width
-const X_GAP = 150; // Increased from 120 for more horizontal breathing room
-const Y_GAP = 280; // Increased from 200 for better vertical separation
-const HORIZONTAL_STAGGER = 60; // Increased from 40 for more visual variety
+const NODE_WIDTH = 220;
+const X_GAP = 150;
+const Y_GAP = 280;
+const HORIZONTAL_STAGGER = 60;
 
-// --- TYPE DEFINITIONS ---
 interface NodeLevel {
   id: string;
   level: number;
@@ -28,13 +26,11 @@ interface NodePosition {
   y: number;
 }
 
-// Custom position override type
 export interface CustomNodePosition {
   x: number;
   y: number;
 }
 
-// Custom node data type
 export interface GraphNodeData extends Record<string, unknown> {
   label: string;
   status: NodeStatus;
@@ -43,9 +39,6 @@ export interface GraphNodeData extends Record<string, unknown> {
   estimatedTime?: string;
 }
 
-/**
- * ✅ IMPROVED: Better edge styling with improved visibility
- */
 function getEdgeStyle(status: NodeStatus): {
   stroke: string;
   strokeWidth: number;
@@ -54,30 +47,26 @@ function getEdgeStyle(status: NodeStatus): {
   switch (status) {
     case "completed":
       return {
-        stroke: "#10b981", // Emerald for completed (matches new CustomNode)
-        strokeWidth: 3, // Thicker for better visibility
+        stroke: "#10b981",
+        strokeWidth: 3,
         animated: true,
       };
     case "unlocked":
       return {
-        stroke: "#3b82f6", // Blue for unlocked
-        strokeWidth: 3, // Thicker for better visibility
+        stroke: "#3b82f6",
+        strokeWidth: 3,
         animated: false,
       };
     case "locked":
     default:
       return {
-        stroke: "#d1d5db", // Slightly darker gray for locked
+        stroke: "#d1d5db",
         strokeWidth: 2,
         animated: false,
       };
   }
 }
 
-/**
- * Calculate node levels using BFS traversal with edges
- * Supports backward compatibility with childrenIds
- */
 function calculateNodeLevels(
   nodes: RoadmapNode[],
   edges: RoadmapEdge[],
@@ -94,14 +83,11 @@ function calculateNodeLevels(
     return { nodeLevels, levelCounts, maxLevel };
   }
 
-  // Build node map for fast lookups
   const nodeMap = new Map<string, RoadmapNode>();
   nodes.forEach((node) => nodeMap.set(node.id, node));
 
-  // Find root (node without parent or first node)
   const rootNode = nodes.find((n) => !n.parentId) || nodes[0];
 
-  // BFS queue
   const queue: NodeLevel[] = [{ id: rootNode.id, level: 0 }];
   const visited = new Set<string>();
 
@@ -111,28 +97,22 @@ function calculateNodeLevels(
 
     const { id, level } = current;
 
-    // Skip if already processed (prevents cycles)
     if (visited.has(id)) continue;
     visited.add(id);
 
-    // Record level
     nodeLevels.set(id, level);
     levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
     maxLevel = Math.max(maxLevel, level);
 
-    // Get children using edges (with backward compatibility)
     let childIds: string[];
 
     if (edges.length > 0) {
-      // Use edges (new approach)
       childIds = getChildNodeIds(id, edges);
     } else {
-      // Backward compatibility: Use childrenIds if edges not available
       const node = nodeMap.get(id);
       childIds = node?.childrenIds || [];
     }
 
-    // Add children to queue
     childIds.forEach((childId) => {
       if (!visited.has(childId)) {
         queue.push({ id: childId, level: level + 1 });
@@ -147,23 +127,17 @@ function calculateNodeLevels(
   return { nodeLevels, levelCounts, maxLevel };
 }
 
-/**
- * ✅ IMPROVED: Better node positioning with adaptive spacing
- */
 function calculateNodePosition(
   level: number,
   indexInLevel: number,
   totalInLevel: number,
 ): NodePosition {
-  // Calculate total width needed for this level
   const totalWidth = totalInLevel * (NODE_WIDTH + X_GAP);
   const startX = -(totalWidth / 2);
 
-  // ✅ IMPROVED: More pronounced stagger for visual variety
   const staggerOffset =
     indexInLevel % 2 === 0 ? HORIZONTAL_STAGGER : -HORIZONTAL_STAGGER / 2;
 
-  // ✅ IMPROVED: Add extra vertical padding for first level (root node)
   const extraTopPadding = level === 0 ? 50 : 0;
 
   return {
@@ -172,19 +146,14 @@ function calculateNodePosition(
       indexInLevel * (NODE_WIDTH + X_GAP) +
       NODE_WIDTH / 2 +
       staggerOffset,
-    y: level * Y_GAP + 120 + extraTopPadding, // Increased top padding from 100 to 120
+    y: level * Y_GAP + 120 + extraTopPadding,
   };
 }
 
-/**
- * Create ReactFlow edges from edges array
- * Supports backward compatibility with childrenIds
- */
 function createEdges(nodes: RoadmapNode[], edges: RoadmapEdge[]): Edge[] {
   const reactFlowEdges: Edge[] = [];
 
   if (edges.length > 0) {
-    // Use edges array (new approach)
     const nodeMap = new Map<string, RoadmapNode>();
     nodes.forEach((node) => nodeMap.set(node.id, node));
 
@@ -210,7 +179,6 @@ function createEdges(nodes: RoadmapNode[], edges: RoadmapEdge[]): Edge[] {
       });
     });
   } else {
-    // Backward compatibility: Build edges from childrenIds
     console.warn(
       "[Graph Layout] ⚠️ No edges found, using childrenIds (deprecated)",
     );
@@ -241,9 +209,6 @@ function createEdges(nodes: RoadmapNode[], edges: RoadmapEdge[]): Edge[] {
   return reactFlowEdges;
 }
 
-/**
- * Create ReactFlow nodes with calculated positions and custom overrides
- */
 function createNodes(
   nodes: RoadmapNode[],
   nodeLevels: Map<string, number>,
@@ -265,7 +230,6 @@ function createNodes(
       totalInThisLevel,
     );
 
-    // Use custom position if available, otherwise use calculated
     const position = customPositions?.[node.id] ?? defaultPosition;
 
     reactFlowNodes.push({
@@ -286,23 +250,11 @@ function createNodes(
   return reactFlowNodes;
 }
 
-/**
- * Main function - Generate graph layout
- *
- * Algorithm: Vertical Tree Layout with BFS + Custom Position Override
- * Time Complexity: O(n) where n = number of nodes
- * Space Complexity: O(n)
- *
- * @param nodes - Array of roadmap nodes
- * @param edges - Array of roadmap edges (optional for backward compatibility)
- * @param customPositions - Optional custom positions from user drag-drop
- */
 export function getGraphLayout(
   nodes: RoadmapNode[],
   edges: RoadmapEdge[] = [],
   customPositions?: Record<string, CustomNodePosition>,
 ): LayoutResult {
-  // Early return for empty input
   if (nodes.length === 0) {
     return {
       reactFlowNodes: [],
@@ -314,10 +266,8 @@ export function getGraphLayout(
     `[Graph Layout] 🎨 Processing ${nodes.length} nodes with ${edges.length} edges`,
   );
 
-  // Calculate levels using BFS with edges
   const { nodeLevels, levelCounts } = calculateNodeLevels(nodes, edges);
 
-  // Create ReactFlow nodes with positions
   const reactFlowNodes = createNodes(
     nodes,
     nodeLevels,
@@ -325,7 +275,6 @@ export function getGraphLayout(
     customPositions,
   );
 
-  // Create ReactFlow edges
   const reactFlowEdges = createEdges(nodes, edges);
 
   return {
@@ -334,9 +283,6 @@ export function getGraphLayout(
   };
 }
 
-/**
- * Utility: Get graph statistics for debugging/analytics
- */
 export function getGraphStats(
   nodes: RoadmapNode[],
   edges: RoadmapEdge[] = [],

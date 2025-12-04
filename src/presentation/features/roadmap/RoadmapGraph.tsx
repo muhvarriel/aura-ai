@@ -28,12 +28,6 @@ import {
   selectStateVersion,
 } from "@/infrastructure/store/roadmap-store";
 
-/**
- * ═══════════════════════════════════════════════════════════════
- * ROADMAP GRAPH - FIXED VERSION (NO AGGRESSIVE MEMO)
- * ═══════════════════════════════════════════════════════════════
- */
-
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
 };
@@ -53,9 +47,6 @@ type CustomNodeData = {
   estimatedTime?: string;
 };
 
-/**
- * Custom Animated Edge
- */
 const AnimatedEdge: React.FC<EdgeProps> = ({
   id,
   sourceX,
@@ -153,9 +144,6 @@ const edgeTypes = {
   animated: AnimatedEdge,
 };
 
-/**
- * Simplified background
- */
 const MultiLayerBackground: React.FC = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     <Background
@@ -177,9 +165,6 @@ const MultiLayerBackground: React.FC = () => (
   </div>
 );
 
-/**
- * Reset Layout Button Component
- */
 const ResetLayoutButton: React.FC<{
   onReset: () => void;
 }> = ({ onReset }) => {
@@ -215,9 +200,6 @@ const ResetLayoutButton: React.FC<{
   );
 };
 
-/**
- * RoadmapGraph Component (NO MEMO WRAPPER)
- */
 function RoadmapGraph({
   nodes,
   edges = [],
@@ -226,32 +208,26 @@ function RoadmapGraph({
 }: RoadmapGraphProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // ✅ CRITICAL: Subscribe to stateVersion for auto re-render
   const stateVersion = useRoadmapStore(selectStateVersion);
 
-  // Get position management functions from store
   const saveNodePosition = useRoadmapStore((state) => state.saveNodePosition);
   const getNodePositions = useRoadmapStore((state) => state.getNodePositions);
   const resetNodePositions = useRoadmapStore(
     (state) => state.resetNodePositions,
   );
 
-  // ✅ NEW: Log state version changes
   useEffect(() => {
     console.log(`[RoadmapGraph] 🔄 State version changed: ${stateVersion}`);
   }, [stateVersion]);
 
-  // Get custom positions from store
   const customPositions = useMemo(() => {
     return getNodePositions(roadmapId);
   }, [roadmapId, getNodePositions]);
 
-  // ✅ FIXED: Create node status signature for proper re-calculation
   const nodeStatusSignature = useMemo(() => {
     return nodes.map((n) => `${n.id}:${n.status}`).join("|");
   }, [nodes]);
 
-  // ✅ FIXED: Recalculate layout when nodes OR stateVersion changes
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
     console.log("🔄 [RoadmapGraph] Recalculating graph layout", {
       nodeCount: nodes.length,
@@ -281,13 +257,12 @@ function RoadmapGraph({
       reactFlowNodes: layout.reactFlowNodes,
       reactFlowEdges: enhancedEdges,
     };
-  }, [nodes, edges, customPositions, stateVersion, nodeStatusSignature]); // ✅ Added stateVersion & nodeStatusSignature
+  }, [nodes, edges, customPositions, stateVersion, nodeStatusSignature]);
 
   const [rfNodes, setNodes, onNodesChange] =
     useNodesState<Node>(reactFlowNodes);
   const [rfEdges, , onEdgesChange] = useEdgesState<Edge>(reactFlowEdges);
 
-  // ✅ FIXED: Update React Flow nodes when reactFlowNodes change
   useEffect(() => {
     console.log("[RoadmapGraph] 🔄 Updating React Flow nodes", {
       count: reactFlowNodes.length,
@@ -296,7 +271,6 @@ function RoadmapGraph({
     setNodes(reactFlowNodes);
   }, [reactFlowNodes, setNodes, stateVersion]);
 
-  // Enhanced node click handler
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
       const nodeData = node.data as CustomNodeData;
@@ -318,7 +292,6 @@ function RoadmapGraph({
     [onNodeClick],
   );
 
-  // Handle node drag stop - save position
   const handleNodeDragStop = useCallback(
     (event: React.MouseEvent | React.TouchEvent, node: Node) => {
       console.log(`[RoadmapGraph] 📍 Node dragged:`, {
@@ -334,7 +307,6 @@ function RoadmapGraph({
     [roadmapId, saveNodePosition],
   );
 
-  // Handle reset layout
   const handleResetLayout = useCallback(() => {
     console.log("[RoadmapGraph] 🔄 Resetting layout to default");
     resetNodePositions(roadmapId);
@@ -444,5 +416,4 @@ function RoadmapGraph({
   );
 }
 
-// ✅ REMOVED: No memo wrapper for auto re-render
 export default RoadmapGraph;

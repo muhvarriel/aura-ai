@@ -1,5 +1,3 @@
-// Ini adalah bentuk JSON yang akan dipaksa keluar dari Groq AI
-// Harus sesederhana mungkin agar AI tidak bingung
 export interface SyllabusAIResponse {
   title: string;
   description: string;
@@ -8,6 +6,6 @@ export interface SyllabusAIResponse {
     description: string;
     difficulty: string;
     estimatedTime: string;
-    subTopics: string[]; // Topik anak (cabang)
+    subTopics: string[];
   }[];
 }

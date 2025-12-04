@@ -1,37 +1,19 @@
 @import "tailwindcss";
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  AURA AI - ENHANCED GLOBAL STYLES
-  ═══════════════════════════════════════════════════════════════
-  Design System: Minimalist, Elegant, Interactive
-  Color Palette: Black & White with Neutral Grays
-  Typography: Serif for headings, Sans for body
-  ═══════════════════════════════════════════════════════════════
-*/
-
-/* 
-  TAILWIND THEME CONFIGURATION
-  ------------------------------
-*/
 @theme {
-  /* Typography */
   --font-sans:
     var(--font-outfit), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  /* Base Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-muted: var(--muted);
 
-  /* Built-in Animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
-  /* Enhanced Custom Animations */
   --animate-fade-in: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-out: fade-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-slide-up: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
@@ -47,28 +29,20 @@
   --animate-celebrate: celebrate 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  CSS CUSTOM PROPERTIES (VARIABLES)
-  ═══════════════════════════════════════════════════════════════
-*/
 :root {
-  /* Core Colors */
   --background: #ffffff;
-  --foreground: #09090b; /* Zinc-950 */
-  --primary: #000000; /* Pure Black */
+  --foreground: #09090b;
+  --primary: #000000;
   --primary-foreground: #ffffff;
-  --muted: #f4f4f5; /* Zinc-100 */
-  --muted-foreground: #71717a; /* Zinc-500 */
-  --border: #e4e4e7; /* Zinc-200 */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
 
-  /* Semantic Colors */
-  --color-success: #10b981; /* Green-500 */
-  --color-warning: #f59e0b; /* Amber-500 */
-  --color-error: #ef4444; /* Red-500 */
-  --color-info: #3b82f6; /* Blue-500 */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
 
-  /* Elevation Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg:
@@ -78,33 +52,28 @@
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --shadow-glow: 0 0 20px rgb(0 0 0 / 0.15);
 
-  /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 600ms cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Spacing Scale (for consistency) */
-  --spacing-xs: 0.25rem; /* 4px */
-  --spacing-sm: 0.5rem; /* 8px */
-  --spacing-md: 1rem; /* 16px */
-  --spacing-lg: 1.5rem; /* 24px */
-  --spacing-xl: 2rem; /* 32px */
-  --spacing-2xl: 3rem; /* 48px */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
 
-  /* Border Radius */
-  --radius-sm: 0.5rem; /* 8px */
-  --radius-md: 1rem; /* 16px */
-  --radius-lg: 1.5rem; /* 24px */
-  --radius-xl: 2rem; /* 32px */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
   --radius-full: 9999px;
 
-  /* React Flow Specific */
   --xy-edge-stroke: #e5e5e5;
   --xy-edge-stroke-width: 2px;
   --xy-node-border-radius: var(--radius-xl);
 
-  /* Z-Index Scale */
   --z-base: 1;
   --z-dropdown: 10;
   --z-sticky: 20;
@@ -114,7 +83,6 @@
   --z-tooltip: 60;
 }
 
-/* Dark Mode Variables */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #09090b;
@@ -126,7 +94,6 @@
     --border: #27272a;
     --xy-edge-stroke: #4b5563;
 
-    /* Adjust shadows for dark mode */
     --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
     --shadow-md:
       0 4px 6px -1px rgb(255 255 255 / 0.1),
@@ -142,13 +109,6 @@
   }
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  KEYFRAME ANIMATIONS
-  ═══════════════════════════════════════════════════════════════
-*/
-
-/* Fade Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -167,7 +127,6 @@
   }
 }
 
-/* Slide Animations */
 @keyframes slide-up {
   from {
     opacity: 0;
@@ -190,7 +149,6 @@
   }
 }
 
-/* Scale Animations */
 @keyframes scale-in {
   from {
     opacity: 0;
@@ -213,7 +171,6 @@
   }
 }
 
-/* Pulse & Glow Animations */
 @keyframes pulse-gentle {
   0%,
   100% {
@@ -234,7 +191,6 @@
   }
 }
 
-/* Shimmer Effect */
 @keyframes shimmer {
   0% {
     background-position: -200% center;
@@ -244,7 +200,6 @@
   }
 }
 
-/* Bounce Animation (Soft) */
 @keyframes bounce-soft {
   0%,
   100% {
@@ -255,7 +210,6 @@
   }
 }
 
-/* Float Animation */
 @keyframes float {
   0%,
   100% {
@@ -266,7 +220,6 @@
   }
 }
 
-/* Ripple Effect */
 @keyframes ripple {
   0% {
     transform: scale(0);
@@ -278,7 +231,6 @@
   }
 }
 
-/* Celebration Animation */
 @keyframes celebrate {
   0% {
     transform: scale(1) rotate(0deg);
@@ -297,7 +249,6 @@
   }
 }
 
-/* Spin Animation */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -307,7 +258,6 @@
   }
 }
 
-/* Progress Bar Animation */
 @keyframes progress-flow {
   0% {
     background-position: 0% 50%;
@@ -320,7 +270,6 @@
   }
 }
 
-/* Skeleton Loading */
 @keyframes skeleton-pulse {
   0%,
   100% {
@@ -331,7 +280,6 @@
   }
 }
 
-/* Accordion Animations (from original) */
 @keyframes accordion-down {
   from {
     height: 0;
@@ -350,11 +298,6 @@
   }
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  BASE STYLES
-  ═══════════════════════════════════════════════════════════════
-*/
 body {
   background-color: var(--background);
   color: var(--foreground);
@@ -365,30 +308,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth Scroll Behavior */
 html {
   scroll-behavior: smooth;
 }
 
-/* Selection Styling */
 ::selection {
   background-color: var(--primary);
   color: var(--primary-foreground);
 }
 
-/* Focus Visible Styling */
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  REUSABLE UTILITY CLASSES
-  ═══════════════════════════════════════════════════════════════
-*/
-
-/* Glass Morphism Effect */
 .glass {
   @apply bg-white/80 backdrop-blur-md border border-neutral-100;
 }
@@ -397,7 +330,6 @@ html {
   @apply bg-black/80 backdrop-blur-md border border-neutral-800;
 }
 
-/* Gradient Backgrounds */
 .bg-gradient-radial {
   background: radial-gradient(
     circle at center,
@@ -410,7 +342,6 @@ html {
   background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
 }
 
-/* Interactive States */
 .interactive {
   @apply transition-all duration-300 cursor-pointer;
   @apply hover:scale-105 hover:shadow-lg active:scale-95;
@@ -421,12 +352,10 @@ html {
   @apply hover:scale-[1.02] hover:shadow-md active:scale-[0.98];
 }
 
-/* Disabled State */
 .disabled {
   @apply opacity-50 cursor-not-allowed pointer-events-none;
 }
 
-/* Shimmer Effect for Loading */
 .shimmer {
   background: linear-gradient(
     90deg,
@@ -438,18 +367,15 @@ html {
   animation: shimmer 2.5s linear infinite;
 }
 
-/* Skeleton Loading */
 .skeleton {
   @apply bg-neutral-200 rounded animate-pulse;
 }
 
-/* Text Gradients */
 .text-gradient {
   @apply bg-clip-text text-transparent;
   background-image: linear-gradient(135deg, #000000 0%, #525252 100%);
 }
 
-/* Smooth Appear Animation */
 .appear {
   animation: var(--animate-fade-in);
 }
@@ -462,30 +388,20 @@ html {
   animation: var(--animate-scale-in);
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  REACT FLOW CUSTOMIZATIONS
-  ═══════════════════════════════════════════════════════════════
-*/
-
-/* Base Node Styling */
 .react-flow__node {
   @apply shadow-sm transition-all duration-300;
   will-change: transform, box-shadow;
 }
 
-/* Node Hover States */
 .react-flow__node:hover {
   @apply shadow-xl;
   transform: translateY(-2px);
 }
 
-/* Node Selection */
 .react-flow__node.selected {
   @apply ring-2 ring-black ring-offset-2;
 }
 
-/* Handle Styling */
 .react-flow__handle {
   @apply w-3 h-3 transition-all duration-200;
   background: var(--primary);
@@ -496,7 +412,6 @@ html {
   @apply scale-125 shadow-md;
 }
 
-/* Edge Styling */
 .react-flow__edge-path {
   stroke: var(--xy-edge-stroke);
   stroke-width: var(--xy-edge-stroke-width);
@@ -508,17 +423,11 @@ html {
   stroke-width: 3px;
 }
 
-/* Control Buttons */
 .react-flow__controls-button {
   @apply bg-white border-neutral-200 transition-all duration-200;
   @apply hover:bg-neutral-50 hover:scale-105;
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  MARKDOWN TYPOGRAPHY (PROSE)
-  ═══════════════════════════════════════════════════════════════
-*/
 .prose {
   @apply text-zinc-800 max-w-none leading-7;
 }
@@ -607,13 +516,6 @@ html {
   @apply px-4 py-3 border-b border-neutral-200 text-zinc-600;
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  ACCESSIBILITY ENHANCEMENTS
-  ═══════════════════════════════════════════════════════════════
-*/
-
-/* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -624,7 +526,6 @@ html {
   }
 }
 
-/* High Contrast Mode Support */
 @media (prefers-contrast: high) {
   :root {
     --border: #000000;
@@ -635,11 +536,6 @@ html {
   }
 }
 
-/* 
-  ═══════════════════════════════════════════════════════════════
-  PRINT STYLES
-  ═══════════════════════════════════════════════════════════════
-*/
 @media print {
   body {
     @apply text-black bg-white;

@@ -16,17 +16,6 @@ import {
   ContentGenerationSchema,
 } from "./schemas";
 
-/**
- * OPTIMIZED AI CHAINS
- * Changes:
- * - Removed format_instructions duplication (already in prompts)
- * - Reduced retry from 2 to 1 (route handles main retry)
- * - Simplified JSON parsing with early exit
- * - Added token usage logging
- * - Savings: ~150 tokens per request + reduced retry costs
- */
-
-// Initialize Groq Model
 const model = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
   model: AI_CONFIG.MODEL_NAME,
@@ -35,9 +24,6 @@ const model = new ChatGroq({
   streaming: AI_CONFIG.STREAMING,
 });
 
-/**
- * Check if JSON string is complete
- */
 function isCompleteJSON(jsonString: string): boolean {
   let braceCount = 0;
   let bracketCount = 0;
@@ -73,9 +59,6 @@ function isCompleteJSON(jsonString: string): boolean {
   return braceCount === 0 && bracketCount === 0 && !inString;
 }
 
-/**
- * Salvage incomplete JSON by closing structures
- */
 function salvageJSON(incomplete: string): string {
   let result = incomplete.trim();
   const openBraces = (result.match(/{/g) || []).length;
@@ -84,16 +67,13 @@ function salvageJSON(incomplete: string): string {
   let closeBrackets = (result.match(/]/g) || []).length;
   const quoteCount = (result.match(/(?<!\\)"/g) || []).length;
 
-  // Close unclosed string
   if (quoteCount % 2 !== 0) result += '"';
 
-  // Close arrays
   while (closeBrackets < openBrackets) {
     result += "]";
     closeBrackets++;
   }
 
-  // Close objects
   while (closeBraces < openBraces) {
     result += "}";
     closeBraces++;
@@ -102,9 +82,6 @@ function salvageJSON(incomplete: string): string {
   return result;
 }
 
-/**
- * Sanitize JSON string - remove control characters
- */
 function sanitizeJSONString(text: string): string {
   return text
     .replace(/[\x00-\x1F\x7F]/g, " ")
@@ -112,17 +89,12 @@ function sanitizeJSONString(text: string): string {
     .trim();
 }
 
-/**
- * Extract JSON from AI response
- */
 function extractJSON(rawText: string): string {
-  // Try markdown code block
   const codeBlockMatch = rawText.match(/``````/);
   if (codeBlockMatch?.[1]) {
     return codeBlockMatch[1].trim();
   }
 
-  // Extract JSON boundaries
   const firstBrace = rawText.indexOf("{");
   const lastBrace = rawText.lastIndexOf("}");
 
@@ -132,13 +104,11 @@ function extractJSON(rawText: string): string {
 
   let extracted = rawText.substring(firstBrace, lastBrace + 1);
 
-  // Clean structural issues
   extracted = extracted
     .replace(/"\s*[\n\r]+\s*"/g, '" "')
     .replace(/,\s*[\n\r]*\s*}/g, "}")
     .replace(/,\s*[\n\r]*\s*]/g, "]");
 
-  // Check completeness
   if (!isCompleteJSON(extracted)) {
     const salvaged = salvageJSON(extracted);
     if (isCompleteJSON(salvaged)) {
@@ -152,9 +122,6 @@ function extractJSON(rawText: string): string {
   return extracted;
 }
 
-/**
- * Fix common JSON issues
- */
 function attemptJSONFix(jsonString: string): string {
   return jsonString
     .replace(
@@ -166,18 +133,13 @@ function attemptJSONFix(jsonString: string): string {
     .replace(/(\{|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
 }
 
-/**
- * Parse and validate with Zod schema
- */
 function parseAndValidate<T>(
   rawText: string,
   schema: z.ZodSchema<T>,
   context: string,
 ): T {
-  // Sanitize
   const sanitized = sanitizeJSONString(rawText);
 
-  // Extract
   let extracted: string;
   try {
     extracted = extractJSON(sanitized);
@@ -186,7 +148,6 @@ function parseAndValidate<T>(
     throw error;
   }
 
-  // Parse with retry
   let parsed: unknown;
   try {
     parsed = JSON.parse(extracted);
@@ -203,7 +164,6 @@ function parseAndValidate<T>(
     }
   }
 
-  // Validate with Zod
   const validated = schema.safeParse(parsed);
 
   if (!validated.success) {
@@ -224,11 +184,8 @@ function parseAndValidate<T>(
   return validated.data;
 }
 
-/**
- * OPTIMIZED: Single retry wrapper (reduced from 2)
- */
 async function withRetry<T>(fn: () => Promise<T>, context: string): Promise<T> {
-  const maxRetries = AI_CONFIG.MAX_RETRIES; // Now 1
+  const maxRetries = AI_CONFIG.MAX_RETRIES;
   let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -248,9 +205,6 @@ async function withRetry<T>(fn: () => Promise<T>, context: string): Promise<T> {
   throw lastError || new Error(`Failed after ${maxRetries} attempts`);
 }
 
-/**
- * OPTIMIZED: Generate syllabus with compact format instructions
- */
 export const generateSyllabusChain = async (
   topic: string,
 ): Promise<SyllabusResponse> => {
@@ -264,7 +218,6 @@ export const generateSyllabusChain = async (
   ]);
 
   try {
-    // OPTIMIZED: Shorter format instructions
     const formatInstructions = `JSON: {{"courseTitle":"str","overview":"str","modules":[{{"title":"str (descriptive, min 10)","description":"str","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"str","subTopics":["str"]}}]}}. Max 6 modules. Complete JSON only.`;
 
     const result = await withRetry(async () => {
@@ -292,9 +245,6 @@ export const generateSyllabusChain = async (
   }
 };
 
-/**
- * OPTIMIZED: Generate content with compact format instructions
- */
 export const generateLearningContentChain = async (
   topic: string,
   moduleTitle: string,
@@ -309,7 +259,6 @@ export const generateLearningContentChain = async (
   ]);
 
   try {
-    // OPTIMIZED: Shorter format instructions
     const formatInstructions = `JSON: {{"title":"str","markdownContent":"str (use \\n)","quiz":[{{"question":"str","options":[{{"id":"str","text":"str","isCorrect":bool}}],"explanation":"str"}}]}}. Max 3 quiz. Complete JSON only.`;
 
     const result = await withRetry(async () => {

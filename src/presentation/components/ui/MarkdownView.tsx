@@ -11,9 +11,7 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
   content,
   className,
 }) => {
-  // Definisi components yang sesuai dengan Aura Design System
   const customComponents: Components = {
-    // 1. Headings: Serif, Hitam, Editorial Look
     h1: ({ ...props }) => (
       <h1
         className="font-serif text-3xl md:text-4xl font-medium mb-6 mt-2 text-black tracking-tight leading-tight border-b border-neutral-100 pb-4"
@@ -33,7 +31,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
       />
     ),
 
-    // 2. Paragraph & Lists: Sans-Serif, Readable, Neutral
     p: ({ ...props }) => (
       <p
         className="text-neutral-600 leading-relaxed mb-4 font-sans"
@@ -53,7 +50,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
       />
     ),
 
-    // 3. Links: Minimalist Underline interaction
     a: ({ ...props }) => (
       <a
         className="font-medium text-black underline underline-offset-4 decoration-neutral-300 hover:decoration-black transition-all"
@@ -63,7 +59,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
       />
     ),
 
-    // 4. Blockquotes: Editorial Pull-Quote style
     blockquote: ({ ...props }) => (
       <blockquote
         className="border-l-4 border-black pl-4 py-1 my-6 text-lg font-serif italic text-neutral-700 bg-neutral-50 rounded-r-lg"
@@ -71,8 +66,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
       />
     ),
 
-    // 5. Code Blocks (Strict Typing Fix)
-    // Kita menggunakan React.ComponentPropsWithoutRef<'code'> untuk type safety
     code: ({
       className,
       children,
@@ -82,7 +75,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
       const isInline = !match;
 
       return isInline ? (
-        // Inline Code: Pill shape halus, monokrom
         <code
           className="bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded-md text-sm font-mono text-neutral-800"
           {...props}
@@ -90,9 +82,7 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
           {children}
         </code>
       ) : (
-        // Block Code: Hitam Pekat (High Contrast)
         <div className="relative my-6 rounded-2xl overflow-hidden bg-neutral-950 shadow-2xl shadow-black/10 group">
-          {/* Optional: Mac-style dots decoration */}
           <div className="flex items-center gap-1.5 px-4 py-3 bg-neutral-900/50 border-b border-white/5">
             <div className="w-2.5 h-2.5 rounded-full bg-neutral-600/50" />
             <div className="w-2.5 h-2.5 rounded-full bg-neutral-600/50" />
@@ -113,8 +103,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
   };
 
   return (
-    // 'prose' class dimatikan style default-nya untuk elemen yang kita override,
-    // tapi tetap berguna untuk spacing element yang tidak tertangani (misal table/img)
     <article className={cn("prose prose-neutral max-w-none", className)}>
       <ReactMarkdown components={customComponents}>{content}</ReactMarkdown>
     </article>

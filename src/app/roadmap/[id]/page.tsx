@@ -33,14 +33,6 @@ import {
   QuizQuestion,
 } from "@/core/entities/quiz";
 
-/**
- * ═══════════════════════════════════════════════════════════════
- * ROADMAP PAGE - FIXED STATE MANAGEMENT
- * ═══════════════════════════════════════════════════════════════
- */
-
-// --- Type Definitions ---
-
 type RawQuizOption =
   | string
   | {
@@ -170,9 +162,6 @@ function generateCacheKey(nodeId: string): string {
   return `content::${nodeId}`;
 }
 
-/**
- * Loading Component
- */
 const LoadingState: React.FC = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-white to-neutral-50 text-black">
     <motion.div
@@ -240,9 +229,6 @@ const LoadingState: React.FC = () => (
   </div>
 );
 
-/**
- * Not Found Component
- */
 const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
   onBackClick,
 }) => (
@@ -275,9 +261,6 @@ const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
   </div>
 );
 
-/**
- * Quiz completion success toast
- */
 const QuizSuccessToast: React.FC<{
   show: boolean;
   nodeName: string;
@@ -309,9 +292,6 @@ const QuizSuccessToast: React.FC<{
   </AnimatePresence>
 );
 
-/**
- * Menu Dropdown
- */
 const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
   onClose,
@@ -355,28 +335,22 @@ const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   </AnimatePresence>
 );
 
-// --- Main Component ---
-
 const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // State
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
 
-  // ✅ Subscribe to state version
   const stateVersion = useRoadmapStore(selectStateVersion);
 
   const params = useParams();
   const roadmapId = params.id as string;
 
-  // Trigger rehydration
   useEffect(() => {
     const unsubHydrate = useRoadmapStore.persist.onFinishHydration(() => {
       useRoadmapStore.getState().setHasHydrated(true);
@@ -389,7 +363,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     };
   }, []);
 
-  // Selectors
   const roadmap = useStore(
     useRoadmapStore,
     useCallback((state) => selectRoadmapById(paramsId)(state), [paramsId]),
@@ -402,27 +375,23 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const currentNode =
     roadmap?.nodes.find((n) => n.id === selectedNodeId) || null;
 
-  // ✅ Log state version changes
   useEffect(() => {
     console.log(`[RoadmapPage] 🔄 State version updated: ${stateVersion}`);
   }, [stateVersion]);
 
-  // ✅ NEW: Log node status changes
   useEffect(() => {
     if (roadmap) {
       const statusMap = roadmap.nodes.map((n) => `${n.id}:${n.status}`);
       console.log("[RoadmapPage] 📊 Node status map:", statusMap);
     }
-  }, [roadmap?.nodes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roadmap?.nodes]);
 
-  // Node click handler
   const handleNodeClick = useCallback((nodeId: string) => {
     console.log(`[RoadmapPage] 🖱️ Node clicked: ${nodeId}`);
     setSelectedNodeId(nodeId);
     setIsDrawerOpen(true);
   }, []);
 
-  // Content fetcher
   const fetchContent = useCallback(
     async (
       topic: string,
@@ -501,7 +470,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     [selectedNodeId, getCachedContent, cacheContent],
   );
 
-  // ✅ Quiz completion handler with logging
   const handleQuizComplete = useCallback(
     (score: number) => {
       if (!selectedNodeId || !roadmap) {
@@ -524,11 +492,9 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
 ╚════════════════════════════════════════════════════════════╝
       `);
 
-      // Complete node (this will trigger unlock in store)
       console.log("[Quiz Complete] 🎯 Calling completeNode...");
       completeNode(roadmap.id, selectedNodeId);
 
-      // Show success toast
       setTimeout(() => {
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 4000);
@@ -541,7 +507,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     [selectedNodeId, roadmap, completeNode, stateVersion],
   );
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -550,30 +515,24 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     };
   }, []);
 
-  // Loading state
   if (!hasHydrated) {
     return <LoadingState />;
   }
 
-  // Not found state
   if (!roadmap) {
     return <NotFoundState onBackClick={() => router.push("/")} />;
   }
 
-  // Main UI
   return (
     <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden relative">
       <div className="absolute inset-0 bg-gradient-to-br from-white via-neutral-50 to-white -z-10" />
 
-      {/* Success Toast */}
       <QuizSuccessToast
         show={showSuccessToast}
         nodeName={currentNode?.label || "Node"}
       />
 
-      {/* Header */}
       <header className="absolute top-0 left-0 w-full px-6 py-6 flex items-start justify-between z-40 pointer-events-none">
-        {/* Left: Back & Title */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -624,7 +583,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
             >
               <div className="flex-1 h-3 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
                 <motion.div
-                  key={`progress-${roadmap.progress}-${stateVersion}`} // ✅ Add stateVersion to key
+                  key={`progress-${roadmap.progress}-${stateVersion}`}
                   initial={{ width: 0 }}
                   animate={{ width: `${roadmap.progress}%` }}
                   transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
@@ -648,7 +607,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
                 </motion.div>
               </div>
               <motion.span
-                key={`progress-text-${roadmap.progress}-${stateVersion}`} // ✅ Add stateVersion to key
+                key={`progress-text-${roadmap.progress}-${stateVersion}`}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.6 }}
@@ -660,7 +619,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           </motion.div>
         </motion.div>
 
-        {/* Right: Menu */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -683,7 +641,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         </motion.div>
       </header>
 
-      {/* ✅ Graph Canvas - NO key prop, rely on stateVersion in RoadmapGraph */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -698,7 +655,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         />
       </motion.div>
 
-      {/* Learning Drawer */}
       <ContentDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -711,7 +667,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   );
 };
 
-// Root component
 export default function RoadmapPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;

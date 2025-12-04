@@ -1,12 +1,3 @@
-/**
- * OPTIMIZED PROMPTS - Token Efficient Version
- * Changes:
- * - Reduced verbosity by 70%
- * - Removed redundant examples
- * - Consolidated format rules
- * - Savings: ~300-400 tokens per request
- */
-
 export const SYLLABUS_PROMPT = `
 Act as Senior Curriculum Architect. Create learning roadmap for: "{topic}"
 

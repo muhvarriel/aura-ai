@@ -1,23 +1,6 @@
 import { z } from "zod";
 
-/**
- * OPTIMIZED SCHEMAS
- * Changes:
- * - Simplified sanitization with early exit
- * - Reduced validation overhead
- * - Kept min length at 1 for flexibility
- * - Cleaner error messages
- */
-
-// ==========================================
-// UTILITIES
-// ==========================================
-
-/**
- * Optimized sanitization - early exit if clean
- */
 function sanitizeString(str: string): string {
-  // Early exit if already clean
   if (!/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F\r\n\t]/.test(str)) {
     return str.trim();
   }
@@ -30,7 +13,6 @@ function sanitizeString(str: string): string {
 }
 
 function sanitizeMarkdown(str: string): string {
-  // Early exit if clean
   if (!/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/.test(str)) {
     return str.trim();
   }
@@ -68,10 +50,6 @@ function createSanitizedMarkdown(
     });
 }
 
-// ==========================================
-// SYLLABUS SCHEMAS
-// ==========================================
-
 export const SyllabusModuleSchema = z.object({
   title: createSanitizedString(1, 150, "Module title"),
   description: createSanitizedString(1, 500, "Description"),
@@ -97,10 +75,6 @@ export const SyllabusResponseSchema = z.object({
 
 export type SyllabusResponse = z.infer<typeof SyllabusResponseSchema>;
 export type SyllabusModule = z.infer<typeof SyllabusModuleSchema>;
-
-// ==========================================
-// CONTENT SCHEMAS
-// ==========================================
 
 export const QuizOptionSchema = z.object({
   id: z.string().min(1).default("a").transform(sanitizeString),
@@ -133,10 +107,6 @@ export type ContentGenerationResponse = z.infer<typeof ContentGenerationSchema>;
 export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 export type QuizOption = z.infer<typeof QuizOptionSchema>;
 
-// ==========================================
-// LEGACY SUPPORT
-// ==========================================
-
 export const LegacyQuizQuestionSchema = z.object({
   question: z.string().optional(),
   pertanyaan: z.string().optional(),
@@ -164,10 +134,6 @@ export const FlexibleContentGenerationSchema = z.object({
 export type FlexibleContentGeneration = z.infer<
   typeof FlexibleContentGenerationSchema
 >;
-
-// ==========================================
-// VALIDATION HELPERS
-// ==========================================
 
 export function validateSyllabusResponse(data: unknown): SyllabusResponse {
   const result = SyllabusResponseSchema.safeParse(data);
@@ -208,10 +174,6 @@ export function validateFlexibleContent(
 
   return result.data;
 }
-
-// ==========================================
-// TYPE GUARDS
-// ==========================================
 
 export function isStructuredQuiz(quiz: unknown): quiz is QuizQuestion {
   return QuizQuestionSchema.safeParse(quiz).success;

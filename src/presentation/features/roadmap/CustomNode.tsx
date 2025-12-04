@@ -8,12 +8,6 @@ import { cn } from "@/lib/utils";
 import { NodeStatus, DifficultyLevel } from "@/core/entities/roadmap";
 import { GraphNodeData } from "@/lib/graph-layout";
 
-/**
- * ═══════════════════════════════════════════════════════════════
- * CUSTOM NODE - FIXED MEMO COMPARISON
- * ═══════════════════════════════════════════════════════════════
- */
-
 export interface CustomNodeData {
   readonly label: string;
   readonly status: NodeStatus;
@@ -180,9 +174,6 @@ const CelebrationParticles: React.FC = () => {
   );
 };
 
-/**
- * Custom Node Component
- */
 const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
@@ -199,7 +190,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
         : "!bg-blue-500 !border-white hover:!scale-150 hover:!shadow-lg",
   );
 
-  // Trigger celebration on mount if completed
   React.useEffect(() => {
     if (status === "completed") {
       setShowParticles(true);
@@ -208,7 +198,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
     }
   }, [status]);
 
-  // ✅ Log status changes
   React.useEffect(() => {
     console.log(`[CustomNode] Status update: ${label} → ${status}`);
   }, [label, status]);
@@ -346,20 +335,17 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
 
 CustomNode.displayName = "CustomNode";
 
-// ✅ FIXED: Memo comparison - force re-render on status change
 export default memo(CustomNode, (prevProps, nextProps) => {
   const prevData = prevProps.data as GraphNodeData;
   const nextData = nextProps.data as GraphNodeData;
 
-  // ✅ CRITICAL: Return false when status changes to force re-render
   if (prevData.status !== nextData.status) {
     console.log(
       `[CustomNode Memo] Status changed for ${prevData.label}: ${prevData.status} → ${nextData.status}, forcing re-render`,
     );
-    return false; // Force re-render
+    return false;
   }
 
-  // Check other props
   const isSame =
     prevData.label === nextData.label &&
     prevData.description === nextData.description &&

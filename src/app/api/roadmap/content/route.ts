@@ -3,17 +3,8 @@ import { z } from "zod";
 import { generateLearningContentChain } from "@/infrastructure/ai/chains";
 import { AI_CONFIG } from "@/core/constants/ai-config";
 import type { ContentGenerationResponse } from "@/infrastructure/ai/schemas";
+import { checkRateLimit } from "@/lib/utils";
 
-/**
- * OPTIMIZED CONTENT ROUTE
- * Changes:
- * - Extended cache TTL to 30 days (content very stable)
- * - Removed double retry (chains already handle 1 retry)
- * - Simplified error handling
- * - Savings: 50-80% for cached content + reduced retry costs
- */
-
-// Request validation
 const GenerateContentRequestSchema = z.object({
   topic: z.string().min(3).max(100).trim(),
   moduleTitle: z.string().min(3).max(150).trim(),
@@ -22,10 +13,6 @@ const GenerateContentRequestSchema = z.object({
 type GenerateContentRequest = z.infer<typeof GenerateContentRequestSchema>;
 
 export const maxDuration = 60;
-
-// ==========================================
-// CACHE IMPLEMENTATION
-// ==========================================
 
 interface CacheEntry {
   data: ContentGenerationResponse;
@@ -59,7 +46,6 @@ class ContentCache {
       return null;
     }
 
-    // LRU: move to end
     this.cache.delete(key);
     this.cache.set(key, entry);
 
@@ -73,7 +59,6 @@ class ContentCache {
   ): void {
     const key = this.generateKey(topic, moduleTitle);
 
-    // Evict oldest
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
       const firstKey = this.cache.keys().next().value;
       if (firstKey) this.cache.delete(firstKey);
@@ -97,15 +82,9 @@ class ContentCache {
   }
 }
 
-// Global cache
 const contentCache = new ContentCache();
 
-// Deduplication map (for concurrent requests)
 const pendingRequests = new Map<string, Promise<ContentGenerationResponse>>();
-
-// ==========================================
-// UTILITIES
-// ==========================================
 
 function log(
   level: "info" | "warn" | "error",
@@ -138,13 +117,54 @@ function getCacheKey(topic: string, moduleTitle: string): string {
   return `${topic}::${moduleTitle}`.toLowerCase().trim();
 }
 
-// ==========================================
-// API ROUTE HANDLER
-// ==========================================
+function getClientIP(req: NextRequest): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) {
+    return realIp;
+  }
+  return "unknown";
+}
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
+  const clientIP = getClientIP(req);
+
+  const rateLimit = checkRateLimit(clientIP, "CONTENT");
+
+  if (!rateLimit.allowed) {
+    const retryAfter = Math.ceil((rateLimit.resetTime - Date.now()) / 1000);
+
+    log("warn", "Rate limit exceeded", {
+      requestId,
+      ip: clientIP,
+      resetTime: new Date(rateLimit.resetTime).toISOString(),
+    });
+
+    return NextResponse.json(
+      {
+        error: "Rate limit exceeded",
+        type: "RATE_LIMIT_ERROR",
+        requestId,
+        retryable: false,
+        retryAfter: rateLimit.resetTime,
+      },
+      {
+        status: 429,
+        headers: {
+          "X-Request-ID": requestId,
+          "X-RateLimit-Limit": String(rateLimit.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(rateLimit.resetTime),
+          "Retry-After": String(retryAfter),
+        },
+      },
+    );
+  }
 
   try {
     const body: unknown = await req.json();
@@ -173,7 +193,6 @@ export async function POST(req: NextRequest) {
 
     const { topic, moduleTitle }: GenerateContentRequest = validation.data;
 
-    // Check persistent cache first
     const cached = contentCache.get(topic, moduleTitle);
     if (cached) {
       const duration = Date.now() - startTime;
@@ -193,12 +212,14 @@ export async function POST(req: NextRequest) {
             "X-Request-ID": requestId,
             "X-Generation-Time": `${duration}ms`,
             "X-Cache-Status": "HIT",
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": String(rateLimit.resetTime),
           },
         },
       );
     }
 
-    // Check deduplication
     const dedupeKey = getCacheKey(topic, moduleTitle);
     const existingRequest = pendingRequests.get(dedupeKey);
 
@@ -215,12 +236,14 @@ export async function POST(req: NextRequest) {
             "X-Request-ID": requestId,
             "X-Generation-Time": `${duration}ms`,
             "X-Cache-Status": "DEDUPLICATED",
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": String(rateLimit.resetTime),
           },
         },
       );
     }
 
-    // Generate new content
     log("info", "Cache MISS - Generating", { requestId, topic, moduleTitle });
 
     const requestPromise = generateLearningContentChain(topic, moduleTitle);
@@ -229,7 +252,6 @@ export async function POST(req: NextRequest) {
     try {
       const data = await requestPromise;
 
-      // Cache result
       contentCache.set(topic, moduleTitle, data);
 
       const duration = Date.now() - startTime;
@@ -252,6 +274,9 @@ export async function POST(req: NextRequest) {
             "X-Request-ID": requestId,
             "X-Generation-Time": `${duration}ms`,
             "X-Cache-Status": "MISS",
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": String(rateLimit.resetTime),
           },
         },
       );
