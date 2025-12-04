@@ -15,7 +15,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 
 import { useRoadmapStore } from "@/infrastructure/store/roadmap-store";
-import { Roadmap, RoadmapNode } from "@/core/entities/roadmap";
+import { Roadmap, RoadmapNode, RoadmapEdge } from "@/core/entities/roadmap";
 import { SyllabusResponse } from "@/infrastructure/ai/schemas";
 
 // --- UI CONSTANTS ---
@@ -110,6 +110,29 @@ const ToastContainer = ({
     </div>
   );
 };
+
+/**
+ * ✅ NEW: Build edges array from parent-child relationships
+ */
+function buildEdgesFromNodes(nodes: RoadmapNode[]): RoadmapEdge[] {
+  const edges: RoadmapEdge[] = [];
+
+  nodes.forEach((node) => {
+    // If node has a parent, create an edge from parent to this node
+    if (node.parentId) {
+      edges.push({
+        id: `${node.parentId}-${node.id}`,
+        source: node.parentId,
+        target: node.id,
+      });
+    }
+  });
+
+  console.log(
+    `[Roadmap Generation] Built ${edges.length} edges from ${nodes.length} nodes`,
+  );
+  return edges;
+}
 
 /**
  * Main Landing Page Component
@@ -225,10 +248,17 @@ export default function LandingPage() {
           throw new Error("Invalid AI response structure");
         }
 
-        // Convert to Roadmap entity
+        // ✅ FIX: Convert to Roadmap entity with edges
         const roadmapId = uuidv4();
         const rootId = "root";
         const nodes: RoadmapNode[] = [];
+
+        console.log(
+          `[Roadmap Generation] Creating roadmap for: ${trimmedTopic}`,
+        );
+        console.log(
+          `[Roadmap Generation] Modules count: ${aiResponse.modules.length}`,
+        );
 
         // Create root node
         nodes.push({
@@ -237,20 +267,13 @@ export default function LandingPage() {
           description:
             aiResponse.overview || `Complete guide to learn ${trimmedTopic}`,
           status: "unlocked",
-          childrenIds: [],
           difficulty: "Beginner",
         });
 
-        // Create module nodes
+        // ✅ FIX: Create module nodes without mutating childrenIds
         aiResponse.modules.forEach((mod, index) => {
           const modId = `mod-${index}`;
           const parentId = index === 0 ? rootId : `mod-${index - 1}`;
-
-          // Link to parent
-          const parentNode = nodes.find((n) => n.id === parentId);
-          if (parentNode) {
-            parentNode.childrenIds = [...parentNode.childrenIds, modId];
-          }
 
           // Validate difficulty enum
           const validDifficulties: Array<
@@ -267,21 +290,39 @@ export default function LandingPage() {
             label: mod.title,
             description: mod.description,
             status: "locked",
-            childrenIds: [],
-            parentId,
+            parentId, // ✅ Set parentId for edge building
             estimatedTime: mod.estimatedTime,
             difficulty,
           });
         });
 
-        // Create roadmap
+        // ✅ FIX: Build edges from parent-child relationships
+        const edges = buildEdgesFromNodes(nodes);
+
+        // ✅ FIX: Calculate initial progress (root is unlocked)
+        const unlockedCount = nodes.filter(
+          (n) => n.status === "unlocked",
+        ).length;
+        const initialProgress = Math.round(
+          (unlockedCount / nodes.length) * 100,
+        );
+
+        // ✅ FIX: Create roadmap with edges
         const newRoadmap: Roadmap = {
           id: roadmapId,
           topic: aiResponse.courseTitle || trimmedTopic,
           nodes,
+          edges, // ✅ ADD edges array
           createdAt: Date.now(),
-          progress: 0,
+          progress: initialProgress,
         };
+
+        console.log(`[Roadmap Generation] Created roadmap:`, {
+          id: roadmapId,
+          nodesCount: nodes.length,
+          edgesCount: edges.length,
+          progress: initialProgress,
+        });
 
         // Save and navigate
         addRoadmap(newRoadmap);

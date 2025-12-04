@@ -10,6 +10,7 @@ import {
   Share2,
   Download,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,7 +34,7 @@ import {
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP PAGE - ENHANCED VERSION
+ * ROADMAP PAGE - ENHANCED VERSION WITH QUIZ UNLOCK FIX
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -183,6 +184,13 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
 }
 
 /**
+ * ✅ NEW: Generate consistent cache key
+ */
+function generateCacheKey(nodeId: string): string {
+  return `content::${nodeId}`;
+}
+
+/**
  * Loading Component
  */
 const LoadingState: React.FC = () => (
@@ -288,6 +296,31 @@ const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
 );
 
 /**
+ * ✅ NEW: Quiz completion success toast
+ */
+const QuizSuccessToast: React.FC<{
+  show: boolean;
+  nodeName: string;
+}> = ({ show, nodeName }) => (
+  <AnimatePresence>
+    {show && (
+      <motion.div
+        initial={{ opacity: 0, y: -50, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -50, scale: 0.9 }}
+        className="fixed top-24 right-6 z-50 bg-green-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
+      >
+        <CheckCircle2 size={24} />
+        <div>
+          <p className="font-semibold">Quiz Completed!</p>
+          <p className="text-sm opacity-90">{nodeName} unlocked next nodes</p>
+        </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+/**
  * Menu Dropdown
  */
 const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
@@ -343,6 +376,8 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false); // ✅ NEW
+  const [graphRefreshKey, setGraphRefreshKey] = useState(0); // ✅ NEW: Force graph re-render
 
   // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
@@ -369,7 +404,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     useCallback((state) => selectRoadmapById(paramsId)(state), [paramsId]),
   );
 
-  // FIX: Use completeNode instead of separate updateStatus + unlockNext
   const completeNode = useRoadmapStore(selectCompleteNode);
   const cacheContent = useRoadmapStore(selectCacheContent);
   const getCachedContent = useRoadmapStore(selectGetContent);
@@ -384,7 +418,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     setIsDrawerOpen(true);
   }, []);
 
-  // FIX: Content fetcher with proper topic parameter
+  // ✅ FIX: Content fetcher with consistent cache key
   const fetchContent = useCallback(
     async (
       topic: string,
@@ -395,12 +429,12 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         return null;
       }
 
-      // FIX: Check cache with key that includes topic
-      const cacheKey = `${topic}::${selectedNodeId}`;
+      // ✅ FIX: Use consistent cache key
+      const cacheKey = generateCacheKey(selectedNodeId);
       const cached = getCachedContent(cacheKey);
       if (cached) {
         console.log(
-          `[Fetch Content] Using cached content for: ${nodeTitle} (topic: ${topic})`,
+          `[Fetch Content] ✅ Using cached content for: ${nodeTitle} (node: ${selectedNodeId})`,
         );
         return cached;
       }
@@ -412,10 +446,11 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
       abortControllerRef.current = new AbortController();
 
       try {
-        console.log(`[Fetch Content] Fetching new content:`, {
+        console.log(`[Fetch Content] 🔄 Fetching new content:`, {
           topic,
           nodeTitle,
           nodeId: selectedNodeId,
+          cacheKey,
         });
 
         const res = await fetch("/api/roadmap/content", {
@@ -438,7 +473,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         const mappedQuizzes = transformQuizData(json.data.quiz || []);
 
         console.log(
-          `[Fetch Content] Successfully transformed ${mappedQuizzes.length} quiz questions`,
+          `[Fetch Content] ✅ Successfully transformed ${mappedQuizzes.length} quiz questions`,
         );
 
         const content: LearningContent = {
@@ -448,23 +483,23 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           quizzes: mappedQuizzes,
         };
 
-        // FIX: Cache with key that includes topic
+        // ✅ FIX: Cache with consistent key
         cacheContent(cacheKey, content);
         return content;
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          console.log(`[Fetch Content] Request cancelled: ${nodeTitle}`);
+          console.log(`[Fetch Content] ⏸️ Request cancelled: ${nodeTitle}`);
           return null;
         }
 
-        console.error("[Fetch Content] Error:", error);
+        console.error("[Fetch Content] ❌ Error:", error);
         throw error;
       }
     },
     [selectedNodeId, getCachedContent, cacheContent],
   );
 
-  // FIX: Quiz completion handler using completeNode
+  // ✅ FIX: Quiz completion handler with graph refresh
   const handleQuizComplete = useCallback(
     (score: number) => {
       if (!selectedNodeId || !roadmap) {
@@ -472,12 +507,23 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         return;
       }
 
-      console.log(`[Quiz Complete] Node: ${selectedNodeId}, Score: ${score}`);
+      console.log(
+        `[Quiz Complete] 🎯 Node: ${selectedNodeId}, Score: ${score}`,
+      );
 
-      // FIX: Use combined method that updates status AND unlocks next nodes
+      // Complete node and unlock next
       completeNode(roadmap.id, selectedNodeId);
 
-      console.log(`[Quiz Complete] Node completed and next nodes unlocked`);
+      // ✅ NEW: Show success toast
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+
+      // ✅ NEW: Force graph re-render to show updated node statuses
+      setGraphRefreshKey((prev) => prev + 1);
+
+      console.log(
+        `[Quiz Complete] ✅ Node completed, next nodes unlocked, graph refreshed`,
+      );
     },
     [selectedNodeId, roadmap, completeNode],
   );
@@ -505,6 +551,12 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   return (
     <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden relative">
       <div className="absolute inset-0 bg-gradient-to-br from-white via-neutral-50 to-white -z-10" />
+
+      {/* ✅ NEW: Success Toast */}
+      <QuizSuccessToast
+        show={showSuccessToast}
+        nodeName={currentNode?.label || "Node"}
+      />
 
       {/* Header */}
       <header className="absolute top-0 left-0 w-full px-6 py-6 flex items-start justify-between z-40 pointer-events-none">
@@ -617,8 +669,9 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         </motion.div>
       </header>
 
-      {/* Graph Canvas */}
+      {/* Graph Canvas - ✅ NEW: Added key prop to force re-render */}
       <motion.div
+        key={graphRefreshKey}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.8 }}
@@ -626,6 +679,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
       >
         <RoadmapGraph
           nodes={roadmap.nodes}
+          edges={roadmap.edges}
           onNodeClick={handleNodeClick}
           roadmapId={roadmapId}
         />

@@ -22,12 +22,12 @@ import "@xyflow/react/dist/style.css";
 
 import CustomNode from "./CustomNode";
 import { getGraphLayout } from "@/lib/graph-layout";
-import { RoadmapNode, NodeStatus } from "@/core/entities/roadmap";
-import { useRoadmapStore } from "@/infrastructure/store/roadmap-store"; // ✅ NEW: Import store
+import { RoadmapNode, RoadmapEdge, NodeStatus } from "@/core/entities/roadmap"; // ✅ FIX: Import RoadmapEdge
+import { useRoadmapStore } from "@/infrastructure/store/roadmap-store";
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP GRAPH - ENHANCED VERSION WITH DRAG-DROP
+ * ROADMAP GRAPH - ENHANCED VERSION WITH DRAG-DROP & EDGES SUPPORT
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -35,10 +35,12 @@ const nodeTypes: NodeTypes = {
   custom: CustomNode,
 };
 
+// ✅ FIX: Add edges to props
 interface RoadmapGraphProps {
   nodes: RoadmapNode[];
+  edges?: RoadmapEdge[]; // ✅ NEW: Optional for backward compatibility
   onNodeClick: (nodeId: string) => void;
-  roadmapId: string; // ✅ NEW: Need roadmapId for position management
+  roadmapId: string;
 }
 
 type CustomNodeData = {
@@ -245,7 +247,7 @@ const StatsPanel: React.FC<{
 };
 
 /**
- * ✅ NEW: Reset Layout Button Component
+ * Reset Layout Button Component
  */
 const ResetLayoutButton: React.FC<{
   onReset: () => void;
@@ -283,31 +285,38 @@ const ResetLayoutButton: React.FC<{
 };
 
 /**
- * ✅ UPDATED: RoadmapGraph Component with Drag-Drop Support
+ * ✅ FIX: RoadmapGraph Component with Edges Support
  */
-function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
+function RoadmapGraph({
+  nodes,
+  edges = [], // ✅ FIX: Add edges with default empty array
+  onNodeClick,
+  roadmapId,
+}: RoadmapGraphProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // ✅ NEW: Get position management functions from store
+  // Get position management functions from store
   const saveNodePosition = useRoadmapStore((state) => state.saveNodePosition);
   const getNodePositions = useRoadmapStore((state) => state.getNodePositions);
   const resetNodePositions = useRoadmapStore(
     (state) => state.resetNodePositions,
   );
 
-  // ✅ NEW: Get custom positions from store
+  // Get custom positions from store
   const customPositions = useMemo(() => {
     return getNodePositions(roadmapId);
   }, [roadmapId, getNodePositions]);
 
-  // ✅ UPDATED: Pass custom positions to layout calculation
+  // ✅ FIX: Pass edges as second parameter to getGraphLayout
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
     console.log("🔄 Recalculating graph layout", {
       nodeCount: nodes.length,
+      edgeCount: edges.length,
       hasCustomPositions: !!customPositions,
     });
 
-    const layout = getGraphLayout(nodes, customPositions);
+    // ✅ FIX: Correct parameter order - nodes, edges, customPositions
+    const layout = getGraphLayout(nodes, edges, customPositions);
 
     const enhancedEdges = layout.reactFlowEdges.map((edge) => {
       const sourceNode = nodes.find((n) => n.id === edge.source);
@@ -327,7 +336,7 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
       reactFlowNodes: layout.reactFlowNodes,
       reactFlowEdges: enhancedEdges,
     };
-  }, [nodes, customPositions]);
+  }, [nodes, edges, customPositions]);
 
   const [rfNodes, setNodes, onNodesChange] =
     useNodesState<Node>(reactFlowNodes);
@@ -362,7 +371,7 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
     [onNodeClick],
   );
 
-  // ✅ NEW: Handle node drag stop - save position
+  // Handle node drag stop - save position
   const handleNodeDragStop = useCallback(
     (event: React.MouseEvent | React.TouchEvent, node: Node) => {
       console.log(`[RoadmapGraph] Node dragged:`, {
@@ -378,15 +387,15 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
     [roadmapId, saveNodePosition],
   );
 
-  // ✅ NEW: Handle reset layout
+  // ✅ FIX: Handle reset layout with correct parameter order
   const handleResetLayout = useCallback(() => {
     console.log("[RoadmapGraph] Resetting layout to default");
     resetNodePositions(roadmapId);
 
-    // Recalculate default positions
-    const defaultLayout = getGraphLayout(nodes);
+    // ✅ FIX: Pass edges to getGraphLayout
+    const defaultLayout = getGraphLayout(nodes, edges);
     setNodes(defaultLayout.reactFlowNodes);
-  }, [roadmapId, resetNodePositions, nodes, setNodes]);
+  }, [roadmapId, resetNodePositions, nodes, edges, setNodes]);
 
   const handleMoveEnd: OnMove = useCallback((event, viewport) => {
     setZoomLevel(viewport.zoom);
@@ -399,7 +408,7 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
       onNodesChange,
       onEdgesChange,
       onNodeClick: handleNodeClick,
-      onNodeDragStop: handleNodeDragStop, // ✅ NEW: Add drag handler
+      onNodeDragStop: handleNodeDragStop,
       onMoveEnd: handleMoveEnd,
       nodeTypes,
       edgeTypes,
@@ -423,9 +432,8 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
       panOnScroll: false,
       panOnDrag: true,
       preventScrolling: true,
-      // ✅ NEW: Ensure nodes are draggable
       nodesDraggable: true,
-      nodesConnectable: false, // Prevent edge creation
+      nodesConnectable: false,
       elementsSelectable: true,
     }),
     [
@@ -450,7 +458,6 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
           unlockedNodes={stats.unlocked}
         />
 
-        {/* ✅ NEW: Reset Layout Button */}
         <ResetLayoutButton onReset={handleResetLayout} />
 
         <Controls
@@ -497,6 +504,7 @@ function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
   );
 }
 
+// ✅ FIX: Update memo comparison to include edges
 export default memo(RoadmapGraph, (prevProps, nextProps) => {
   const nodesEqual =
     prevProps.nodes.length === nextProps.nodes.length &&
@@ -509,8 +517,20 @@ export default memo(RoadmapGraph, (prevProps, nextProps) => {
       );
     });
 
-  const callbackEqual = prevProps.onNodeClick === nextProps.onNodeClick;
-  const roadmapIdEqual = prevProps.roadmapId === nextProps.roadmapId; // ✅ NEW: Check roadmapId
+  // ✅ FIX: Check edges equality
+  const edgesEqual =
+    (prevProps.edges?.length || 0) === (nextProps.edges?.length || 0) &&
+    (prevProps.edges || []).every((edge, idx) => {
+      const nextEdge = nextProps.edges?.[idx];
+      return (
+        edge.id === nextEdge?.id &&
+        edge.source === nextEdge?.source &&
+        edge.target === nextEdge?.target
+      );
+    });
 
-  return nodesEqual && callbackEqual && roadmapIdEqual;
+  const callbackEqual = prevProps.onNodeClick === nextProps.onNodeClick;
+  const roadmapIdEqual = prevProps.roadmapId === nextProps.roadmapId;
+
+  return nodesEqual && edgesEqual && callbackEqual && roadmapIdEqual;
 });
