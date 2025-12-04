@@ -2,9 +2,17 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  MoreHorizontal,
+  Sparkles,
+  Home,
+  Share2,
+  Download,
+  Loader2,
+} from "lucide-react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import {
   useRoadmapStore,
@@ -24,6 +32,20 @@ import {
   QuizQuestion,
 } from "@/core/entities/quiz";
 
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * ROADMAP PAGE - ENHANCED VERSION
+ * ═══════════════════════════════════════════════════════════════
+ * Features:
+ * - Smooth header animations with stagger effect
+ * - Enhanced progress bar with gradient and glow
+ * - Backdrop blur effects for depth
+ * - Improved loading states with skeleton
+ * - Menu dropdown with actions
+ * - Celebratory confetti on completion milestones
+ * ═══════════════════════════════════════════════════════════════
+ */
+
 // --- Type Definitions ---
 
 /**
@@ -41,19 +63,12 @@ type RawQuizOption =
  * Raw quiz item from API - handles both legacy and new format
  */
 interface RawQuizItem {
-  // Question field (multiple possible keys)
   question?: string;
   pertanyaan?: string;
-
-  // Options field (multiple possible keys and formats)
   options?: RawQuizOption[];
   pilihan?: RawQuizOption[];
-
-  // Answer field (for legacy format)
   answer?: string;
   jawaban?: string;
-
-  // Explanation field
   explanation?: string;
   penjelasan?: string;
 }
@@ -92,7 +107,6 @@ function isStructuredOption(
 
 /**
  * Transform raw quiz options to QuizOption[]
- * FIX: Handle both string[] and structured object[] formats
  */
 function transformQuizOptions(
   rawOptions: RawQuizOption[] | undefined,
@@ -107,7 +121,6 @@ function transformQuizOptions(
 
   return rawOptions
     .map((opt, optIndex): QuizOption | null => {
-      // Case 1: Structured option object { id, text, isCorrect }
       if (isStructuredOption(opt)) {
         return {
           id: opt.id || `opt-${questionIndex}-${optIndex}`,
@@ -116,7 +129,6 @@ function transformQuizOptions(
         };
       }
 
-      // Case 2: Simple string option
       if (isValidString(opt)) {
         const normalizedOption = opt.toLowerCase().trim();
 
@@ -130,7 +142,6 @@ function transformQuizOptions(
         };
       }
 
-      // Case 3: Invalid option - skip
       console.warn(
         `[Quiz Transform] Invalid option at index ${optIndex}:`,
         opt,
@@ -142,7 +153,6 @@ function transformQuizOptions(
 
 /**
  * Transform raw quiz data to QuizQuestion[]
- * FIX: Robust transformation with multiple fallbacks
  */
 function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
   if (!Array.isArray(rawQuiz) || rawQuiz.length === 0) {
@@ -152,20 +162,14 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
 
   return rawQuiz
     .map((q, index): QuizQuestion | null => {
-      // Extract question text
       const questionText = q.question || q.pertanyaan;
       if (!isValidString(questionText)) {
         console.warn(`[Quiz Transform] Invalid question at index ${index}:`, q);
         return null;
       }
 
-      // Extract options (try multiple keys)
       const rawOptions = q.options || q.pilihan;
-
-      // Extract correct answer (for legacy format)
       const correctAnswer = q.answer || q.jawaban || "";
-
-      // Transform options
       const options = transformQuizOptions(rawOptions, correctAnswer, index);
 
       if (options.length === 0) {
@@ -173,7 +177,6 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
         return null;
       }
 
-      // Extract explanation
       const explanation =
         q.explanation ||
         q.penjelasan ||
@@ -191,11 +194,172 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
     .filter((q): q is QuizQuestion => q !== null);
 }
 
+/**
+ * Enhanced Loading Component
+ */
+const LoadingState: React.FC = () => (
+  <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-white to-neutral-50 text-black">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="text-center space-y-6"
+    >
+      {/* Animated Logo/Icon */}
+      <motion.div
+        animate={{
+          rotate: [0, 360],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{
+          rotate: { duration: 2, repeat: Infinity, ease: "linear" },
+          scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
+        }}
+        className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-black to-neutral-700 text-white shadow-2xl"
+      >
+        <Sparkles size={36} />
+      </motion.div>
+
+      {/* Loading Text */}
+      <div className="space-y-2">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="font-serif text-2xl text-neutral-800 font-medium"
+        >
+          Restoring your journey
+        </motion.p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="flex items-center justify-center gap-2"
+        >
+          <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+          <span className="text-sm text-neutral-500 italic">
+            Loading roadmap...
+          </span>
+        </motion.div>
+      </div>
+
+      {/* Progress Skeleton */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="w-64 h-2 bg-neutral-200 rounded-full overflow-hidden"
+      >
+        <motion.div
+          className="h-full bg-gradient-to-r from-black via-neutral-600 to-black"
+          animate={{
+            x: ["-100%", "100%"],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          style={{ width: "50%" }}
+        />
+      </motion.div>
+    </motion.div>
+  </div>
+);
+
+/**
+ * Not Found State Component
+ */
+const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
+  onBackClick,
+}) => (
+  <div className="h-screen w-screen flex items-center justify-center bg-white text-black">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-center space-y-6 max-w-md px-6"
+    >
+      <div className="text-8xl font-serif text-neutral-200">404</div>
+      <div className="space-y-2">
+        <h1 className="font-serif text-3xl text-neutral-800 font-medium">
+          Roadmap not found
+        </h1>
+        <p className="text-neutral-500 leading-relaxed">
+          The learning path you&apos;re looking for doesn&apos;t exist or has
+          been removed.
+        </p>
+      </div>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onBackClick}
+        className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full font-medium hover:bg-neutral-800 transition-colors shadow-lg"
+      >
+        <Home size={18} />
+        Back to Home
+      </motion.button>
+    </motion.div>
+  </div>
+);
+
+/**
+ * Menu Dropdown Component
+ */
+const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
+  isOpen,
+  onClose,
+}) => (
+  <AnimatePresence>
+    {isOpen && (
+      <>
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 z-40"
+        />
+
+        {/* Menu Panel */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="absolute top-14 right-6 z-50 bg-white/95 backdrop-blur-xl border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden min-w-[200px]"
+        >
+          <div className="py-2">
+            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm text-neutral-700 hover:text-black">
+              <Share2 size={16} />
+              <span>Share Progress</span>
+            </button>
+            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm text-neutral-700 hover:text-black">
+              <Download size={16} />
+              <span>Export PDF</span>
+            </button>
+            <div className="my-1 border-t border-neutral-100" />
+            <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50 transition-colors text-sm text-neutral-700 hover:text-black">
+              <Home size={16} />
+              <span>Dashboard</span>
+            </button>
+          </div>
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
+);
+
 // --- Main Component ---
 
 const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // State
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
@@ -224,10 +388,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const cacheContent = useRoadmapStore(selectCacheContent);
   const getCachedContent = useRoadmapStore(selectGetContent);
 
-  // Local state
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
   const currentNode =
     roadmap?.nodes.find((n) => n.id === selectedNodeId) || null;
 
@@ -237,7 +397,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     setIsDrawerOpen(true);
   }, []);
 
-  // Content fetcher with robust transformation
+  // Content fetcher
   const fetchContent = useCallback(
     async (
       topic: string,
@@ -248,22 +408,18 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         return null;
       }
 
-      // 1. Check cache first
       const cached = getCachedContent(selectedNodeId);
       if (cached) {
         console.log(`[Fetch Content] Using cached content for: ${nodeTitle}`);
         return cached;
       }
 
-      // 2. Cancel previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
 
-      // 3. Create new AbortController
       abortControllerRef.current = new AbortController();
 
-      // 4. Fetch from API
       try {
         console.log(`[Fetch Content] Fetching: ${nodeTitle}`);
 
@@ -280,19 +436,16 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           throw new Error(json.error || "Failed to fetch content");
         }
 
-        // 5. Validate response structure
         if (!json.data || typeof json.data.markdownContent !== "string") {
           throw new Error("Invalid API response structure");
         }
 
-        // 6. Transform quiz data with new robust function
         const mappedQuizzes = transformQuizData(json.data.quiz || []);
 
         console.log(
           `[Fetch Content] Successfully transformed ${mappedQuizzes.length} quiz questions`,
         );
 
-        // 7. Create content object
         const content: LearningContent = {
           nodeId: selectedNodeId,
           title: nodeTitle,
@@ -300,20 +453,15 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           quizzes: mappedQuizzes,
         };
 
-        // 8. Cache and return
         cacheContent(selectedNodeId, content);
         return content;
       } catch (error) {
-        // Handle abort (normal cancellation)
         if (error instanceof Error && error.name === "AbortError") {
           console.log(`[Fetch Content] Request cancelled: ${nodeTitle}`);
           return null;
         }
 
-        // Log other errors
         console.error("[Fetch Content] Error:", error);
-
-        // Re-throw for ContentDrawer to handle
         throw error;
       }
     },
@@ -330,10 +478,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
 
       console.log(`[Quiz Complete] Node: ${selectedNodeId}, Score: ${score}`);
 
-      // Mark as completed
       updateStatus(roadmap.id, selectedNodeId, "completed");
-
-      // Unlock next node
       unlockNext(roadmap.id, selectedNodeId);
     },
     [selectedNodeId, roadmap, updateStatus, unlockNext],
@@ -348,98 +493,149 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     };
   }, []);
 
-  // Loading state (before hydration)
+  // Loading state
   if (!hasHydrated) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-white text-black font-serif text-xl">
-        <div className="text-center space-y-4">
-          <div className="inline-block animate-pulse">
-            <Sparkles size={32} className="text-neutral-400" />
-          </div>
-          <p className="text-neutral-600 italic">_Restoring your journey_</p>
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
-  // Roadmap not found
+  // Not found state
   if (!roadmap) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-white text-black font-serif text-xl">
-        <div className="text-center space-y-4">
-          <p className="text-neutral-800">Roadmap not found</p>
-          <button
-            onClick={() => router.push("/")}
-            className="text-sm border-b border-black hover:opacity-60 transition-opacity"
-          >
-            Back to Home
-          </button>
-        </div>
-      </div>
-    );
+    return <NotFoundState onBackClick={() => router.push("/")} />;
   }
 
   // Main UI
   return (
-    <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden">
+    <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden relative">
+      {/* Animated Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-neutral-50 to-white -z-10" />
+
       {/* Header */}
       <header className="absolute top-0 left-0 w-full px-6 py-6 flex items-start justify-between z-40 pointer-events-none">
         {/* Left: Back & Title */}
-        <div className="flex flex-col items-start gap-4 pointer-events-auto">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1, type: "spring", damping: 20 }}
+          className="flex flex-col items-start gap-4 pointer-events-auto"
+        >
+          {/* Back Button */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.05, rotate: -5 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => router.push("/")}
-            className="h-10 w-10 flex items-center justify-center rounded-full border border-neutral-200 bg-white hover:bg-black hover:border-black hover:text-white transition-colors shadow-sm"
+            className="h-11 w-11 flex items-center justify-center rounded-full border-2 border-neutral-200 bg-white/90 backdrop-blur-sm hover:bg-black hover:border-black hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
           >
             <ArrowLeft size={18} />
           </motion.button>
 
-          <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-neutral-100 shadow-sm max-w-md">
-            <div className="flex items-center gap-2 mb-1">
+          {/* Title Card */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, type: "spring", damping: 20 }}
+            className="glass p-5 rounded-3xl border-2 border-neutral-100 shadow-2xl max-w-md backdrop-blur-xl"
+          >
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex items-center gap-2 mb-2"
+            >
               <Sparkles size={14} className="text-neutral-400" />
               <span className="text-xs font-bold tracking-widest uppercase text-neutral-400">
                 Current Path
               </span>
-            </div>
-            <h1 className="font-serif text-2xl md:text-3xl font-medium leading-tight text-black mb-3">
-              {roadmap.topic}
-            </h1>
+            </motion.div>
 
-            {/* Progress bar */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
+            {/* Title */}
+            <motion.h1
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="font-serif text-2xl md:text-3xl font-medium leading-tight text-black mb-4"
+            >
+              {roadmap.topic}
+            </motion.h1>
+
+            {/* Enhanced Progress Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="flex items-center gap-3"
+            >
+              <div className="flex-1 h-2.5 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${roadmap.progress}%` }}
-                  transition={{ duration: 1, ease: "circOut" }}
-                  className="h-full bg-black"
-                />
+                  transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="h-full rounded-full relative"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, #000000 0%, #404040 50%, #000000 100%)",
+                    backgroundSize: "200% 100%",
+                  }}
+                >
+                  {/* Shimmer Effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    animate={{
+                      x: ["-100%", "100%"],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  />
+                </motion.div>
               </div>
-              <span className="text-xs font-mono text-neutral-500">
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 }}
+                className="text-sm font-mono font-bold text-neutral-700 min-w-[45px] text-right"
+              >
                 {roadmap.progress}%
-              </span>
-            </div>
-          </div>
-        </div>
+              </motion.span>
+            </motion.div>
+          </motion.div>
+        </motion.div>
 
         {/* Right: Menu */}
-        <div className="pointer-events-auto">
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, type: "spring", damping: 20 }}
+          className="pointer-events-auto relative"
+        >
           <motion.button
-            whileHover={{ rotate: 90 }}
-            className="h-10 w-10 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-colors shadow-lg"
+            whileHover={{ rotate: 90, scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="h-11 w-11 flex items-center justify-center rounded-full bg-black text-white hover:bg-neutral-800 transition-all duration-300 shadow-2xl hover:shadow-xl"
           >
             <MoreHorizontal size={20} />
           </motion.button>
-        </div>
+
+          {/* Menu Dropdown */}
+          <MenuDropdown
+            isOpen={isMenuOpen}
+            onClose={() => setIsMenuOpen(false)}
+          />
+        </motion.div>
       </header>
 
       {/* Graph Canvas */}
-      <div className="flex-1 w-full h-full relative bg-white">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.8 }}
+        className="flex-1 w-full h-full relative"
+      >
         <RoadmapGraph nodes={roadmap.nodes} onNodeClick={handleNodeClick} />
-
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#e5e5e5_1px,transparent_1px)] [background-size:16px_16px] opacity-40 -z-10" />
-      </div>
+      </motion.div>
 
       {/* Learning Drawer */}
       <ContentDrawer

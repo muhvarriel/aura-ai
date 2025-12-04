@@ -1,114 +1,541 @@
 @import "tailwindcss";
 
 /* 
-  KONFIGURASI TEMA (Tailwind v4)
+  ═══════════════════════════════════════════════════════════════
+  AURA AI - ENHANCED GLOBAL STYLES
+  ═══════════════════════════════════════════════════════════════
+  Design System: Minimalist, Elegant, Interactive
+  Color Palette: Black & White with Neutral Grays
+  Typography: Serif for headings, Sans for body
+  ═══════════════════════════════════════════════════════════════
+*/
+
+/* 
+  TAILWIND THEME CONFIGURATION
   ------------------------------
-  Kita memetakan variabel CSS native ke utility class Tailwind.
 */
 @theme {
-  /* Typography: Set Outfit sebagai font utama (sans) */
+  /* Typography */
   --font-sans:
     var(--font-outfit), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  /* Custom Colors */
+  /* Base Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-muted: var(--muted);
 
-  /* Custom Animations */
+  /* Built-in Animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  /* Enhanced Custom Animations */
+  --animate-fade-in: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-out: fade-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-up: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-down: slide-down 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-out: scale-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pulse-gentle: pulse-gentle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-bounce-soft: bounce-soft 1s ease-in-out infinite;
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-ripple: ripple 0.6s ease-out;
+  --animate-celebrate: celebrate 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 /* 
-  ROOT VARIABLES
-  --------------
-  Mendefinisikan nilai warna dan settingan global.
+  ═══════════════════════════════════════════════════════════════
+  CSS CUSTOM PROPERTIES (VARIABLES)
+  ═══════════════════════════════════════════════════════════════
 */
 :root {
+  /* Core Colors */
   --background: #ffffff;
   --foreground: #09090b; /* Zinc-950 */
-  --primary: #2563eb; /* Blue-600 */
+  --primary: #000000; /* Pure Black */
   --primary-foreground: #ffffff;
   --muted: #f4f4f5; /* Zinc-100 */
   --muted-foreground: #71717a; /* Zinc-500 */
   --border: #e4e4e7; /* Zinc-200 */
 
-  /* React Flow Specific Vars */
-  --xy-edge-stroke: #cbd5e1;
+  /* Semantic Colors */
+  --color-success: #10b981; /* Green-500 */
+  --color-warning: #f59e0b; /* Amber-500 */
+  --color-error: #ef4444; /* Red-500 */
+  --color-info: #3b82f6; /* Blue-500 */
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-glow: 0 0 20px rgb(0 0 0 / 0.15);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 600ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Spacing Scale (for consistency) */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem; /* 8px */
+  --spacing-md: 1rem; /* 16px */
+  --spacing-lg: 1.5rem; /* 24px */
+  --spacing-xl: 2rem; /* 32px */
+  --spacing-2xl: 3rem; /* 48px */
+
+  /* Border Radius */
+  --radius-sm: 0.5rem; /* 8px */
+  --radius-md: 1rem; /* 16px */
+  --radius-lg: 1.5rem; /* 24px */
+  --radius-xl: 2rem; /* 32px */
+  --radius-full: 9999px;
+
+  /* React Flow Specific */
+  --xy-edge-stroke: #e5e5e5;
   --xy-edge-stroke-width: 2px;
-  --xy-node-border-radius: 12px;
+  --xy-node-border-radius: var(--radius-xl);
+
+  /* Z-Index Scale */
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+  --z-tooltip: 60;
 }
 
+/* Dark Mode Variables */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #09090b;
     --foreground: #fafafa;
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #000000;
     --muted: #27272a;
     --muted-foreground: #a1a1aa;
     --border: #27272a;
-
-    /* React Flow Dark Mode overrides */
     --xy-edge-stroke: #4b5563;
+
+    /* Adjust shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+    --shadow-md:
+      0 4px 6px -1px rgb(255 255 255 / 0.1),
+      0 2px 4px -2px rgb(255 255 255 / 0.1);
+    --shadow-lg:
+      0 10px 15px -3px rgb(255 255 255 / 0.1),
+      0 4px 6px -4px rgb(255 255 255 / 0.1);
+    --shadow-xl:
+      0 20px 25px -5px rgb(255 255 255 / 0.1),
+      0 8px 10px -6px rgb(255 255 255 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(255 255 255 / 0.25);
+    --shadow-glow: 0 0 20px rgb(255 255 255 / 0.15);
   }
 }
 
 /* 
+  ═══════════════════════════════════════════════════════════════
+  KEYFRAME ANIMATIONS
+  ═══════════════════════════════════════════════════════════════
+*/
+
+/* Fade Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Slide Animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scale Animations */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Pulse & Glow Animations */
+@keyframes pulse-gentle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Shimmer Effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* Bounce Animation (Soft) */
+@keyframes bounce-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Float Animation */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Ripple Effect */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Celebration Animation */
+@keyframes celebrate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  50% {
+    transform: scale(0.95) rotate(-5deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Spin Animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Progress Bar Animation */
+@keyframes progress-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Skeleton Loading */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Accordion Animations (from original) */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* 
+  ═══════════════════════════════════════════════════════════════
   BASE STYLES
-  -----------
+  ═══════════════════════════════════════════════════════════════
 */
 body {
   background-color: var(--background);
   color: var(--foreground);
-  /* Font-family sudah otomatis dihandle oleh @theme --font-sans di atas */
   font-feature-settings:
     "rlig" 1,
-    "calt" 1; /* Optimasi rendering font */
+    "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth Scroll Behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection Styling */
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Focus Visible Styling */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* 
-  COMPONENT STYLES
-  ----------------
+  ═══════════════════════════════════════════════════════════════
+  REUSABLE UTILITY CLASSES
+  ═══════════════════════════════════════════════════════════════
 */
 
-/* React Flow Custom Node Styling */
+/* Glass Morphism Effect */
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-neutral-100;
+}
+
+.glass-dark {
+  @apply bg-black/80 backdrop-blur-md border border-neutral-800;
+}
+
+/* Gradient Backgrounds */
+.bg-gradient-radial {
+  background: radial-gradient(
+    circle at center,
+    var(--background) 0%,
+    var(--muted) 100%
+  );
+}
+
+.bg-gradient-subtle {
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+}
+
+/* Interactive States */
+.interactive {
+  @apply transition-all duration-300 cursor-pointer;
+  @apply hover:scale-105 hover:shadow-lg active:scale-95;
+}
+
+.interactive-soft {
+  @apply transition-all duration-200 cursor-pointer;
+  @apply hover:scale-[1.02] hover:shadow-md active:scale-[0.98];
+}
+
+/* Disabled State */
+.disabled {
+  @apply opacity-50 cursor-not-allowed pointer-events-none;
+}
+
+/* Shimmer Effect for Loading */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--background) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* Skeleton Loading */
+.skeleton {
+  @apply bg-neutral-200 rounded animate-pulse;
+}
+
+/* Text Gradients */
+.text-gradient {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, #000000 0%, #525252 100%);
+}
+
+/* Smooth Appear Animation */
+.appear {
+  animation: var(--animate-fade-in);
+}
+
+.appear-up {
+  animation: var(--animate-slide-up);
+}
+
+.appear-scale {
+  animation: var(--animate-scale-in);
+}
+
+/* 
+  ═══════════════════════════════════════════════════════════════
+  REACT FLOW CUSTOMIZATIONS
+  ═══════════════════════════════════════════════════════════════
+*/
+
+/* Base Node Styling */
 .react-flow__node {
-  @apply shadow-sm transition-shadow duration-200;
+  @apply shadow-sm transition-all duration-300;
+  will-change: transform, box-shadow;
 }
 
-/* Efek hover pada node agar lebih interaktif */
+/* Node Hover States */
 .react-flow__node:hover {
-  @apply shadow-md ring-2 ring-blue-500/20;
+  @apply shadow-xl;
+  transform: translateY(-2px);
 }
 
+/* Node Selection */
+.react-flow__node.selected {
+  @apply ring-2 ring-black ring-offset-2;
+}
+
+/* Handle Styling */
 .react-flow__handle {
-  @apply w-3 h-3 bg-blue-500 border-2 border-white transition-transform duration-100;
+  @apply w-3 h-3 transition-all duration-200;
+  background: var(--primary);
+  border: 2px solid var(--background);
 }
 
 .react-flow__handle:hover {
-  @apply scale-125;
+  @apply scale-125 shadow-md;
 }
 
-/* Helper Class untuk Markdown Typography (Prose) */
+/* Edge Styling */
+.react-flow__edge-path {
+  stroke: var(--xy-edge-stroke);
+  stroke-width: var(--xy-edge-stroke-width);
+  transition: stroke var(--transition-base);
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--primary);
+  stroke-width: 3px;
+}
+
+/* Control Buttons */
+.react-flow__controls-button {
+  @apply bg-white border-neutral-200 transition-all duration-200;
+  @apply hover:bg-neutral-50 hover:scale-105;
+}
+
+/* 
+  ═══════════════════════════════════════════════════════════════
+  MARKDOWN TYPOGRAPHY (PROSE)
+  ═══════════════════════════════════════════════════════════════
+*/
 .prose {
   @apply text-zinc-800 max-w-none leading-7;
 }
 
 .prose h1 {
-  @apply text-3xl font-bold mb-6 text-blue-600 tracking-tight;
+  @apply text-3xl font-bold mb-6 text-black tracking-tight;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 .prose h2 {
   @apply text-2xl font-semibold mt-8 mb-4 text-zinc-900 tracking-tight;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 .prose h3 {
   @apply text-xl font-semibold mt-6 mb-3 text-zinc-800;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 .prose p {
@@ -123,22 +550,102 @@ body {
   @apply list-decimal pl-6 mb-5 space-y-2 text-zinc-600;
 }
 
+.prose li {
+  @apply leading-relaxed;
+}
+
 .prose strong {
   @apply font-bold text-zinc-900;
 }
 
+.prose em {
+  @apply italic text-zinc-700;
+}
+
 .prose code {
-  @apply bg-blue-50 px-1.5 py-0.5 rounded text-sm text-blue-700 font-mono border border-blue-100;
+  @apply bg-neutral-100 px-2 py-1 rounded text-sm text-black font-mono border border-neutral-200;
 }
 
 .prose pre {
-  @apply bg-zinc-900 p-5 rounded-xl overflow-x-auto mb-6 border border-zinc-800 shadow-inner;
+  @apply bg-zinc-900 p-5 rounded-xl overflow-x-auto mb-6 border border-zinc-800 shadow-lg;
 }
 
 .prose pre code {
-  @apply bg-transparent text-zinc-100 p-0 border-none text-sm;
+  @apply bg-transparent text-zinc-100 p-0 border-none text-sm leading-relaxed;
 }
 
 .prose blockquote {
-  @apply border-l-4 border-blue-200 pl-4 italic text-zinc-500 my-6;
+  @apply border-l-4 border-neutral-300 pl-4 italic text-zinc-600 my-6 bg-neutral-50 py-2 rounded-r;
+}
+
+.prose a {
+  @apply text-black underline underline-offset-4 decoration-neutral-300;
+  @apply hover:decoration-black transition-colors duration-200;
+}
+
+.prose img {
+  @apply rounded-lg shadow-md my-6;
+}
+
+.prose hr {
+  @apply my-8 border-neutral-200;
+}
+
+.prose table {
+  @apply w-full my-6 border-collapse;
+}
+
+.prose thead {
+  @apply border-b-2 border-neutral-300;
+}
+
+.prose th {
+  @apply px-4 py-3 text-left font-semibold text-zinc-900;
+}
+
+.prose td {
+  @apply px-4 py-3 border-b border-neutral-200 text-zinc-600;
+}
+
+/* 
+  ═══════════════════════════════════════════════════════════════
+  ACCESSIBILITY ENHANCEMENTS
+  ═══════════════════════════════════════════════════════════════
+*/
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: #000000;
+  }
+
+  .glass {
+    @apply bg-white border-2 border-black;
+  }
+}
+
+/* 
+  ═══════════════════════════════════════════════════════════════
+  PRINT STYLES
+  ═══════════════════════════════════════════════════════════════
+*/
+@media print {
+  body {
+    @apply text-black bg-white;
+  }
+
+  .no-print {
+    @apply hidden;
+  }
 }
