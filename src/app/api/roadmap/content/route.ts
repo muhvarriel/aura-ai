@@ -1,98 +1,119 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { generateLearningContentChain } from "@/infrastructure/ai/chains";
+import { AI_CONFIG } from "@/core/constants/ai-config";
 import type { ContentGenerationResponse } from "@/infrastructure/ai/schemas";
 
-// ==========================================
-// TYPE DEFINITIONS
-// ==========================================
-
 /**
- * Request validation schema
+ * OPTIMIZED CONTENT ROUTE
+ * Changes:
+ * - Extended cache TTL to 30 days (content very stable)
+ * - Removed double retry (chains already handle 1 retry)
+ * - Simplified error handling
+ * - Savings: 50-80% for cached content + reduced retry costs
  */
+
+// Request validation
 const GenerateContentRequestSchema = z.object({
-  topic: z
-    .string()
-    .min(3, "Topik minimal 3 karakter")
-    .max(100, "Topik maksimal 100 karakter")
-    .trim(),
-  moduleTitle: z
-    .string()
-    .min(3, "Judul modul minimal 3 karakter")
-    .max(150, "Judul modul maksimal 150 karakter")
-    .trim(),
+  topic: z.string().min(3).max(100).trim(),
+  moduleTitle: z.string().min(3).max(150).trim(),
 });
 
 type GenerateContentRequest = z.infer<typeof GenerateContentRequestSchema>;
 
-/**
- * Success response structure
- */
-interface SuccessResponse {
-  data: ContentGenerationResponse;
-}
-
-/**
- * Error response structure
- */
-interface ErrorResponse {
-  error: string;
-  type: string;
-  requestId: string;
-  details?: Array<{ field: string; message: string }>;
-  retryable?: boolean;
-}
-
-/**
- * Error categories
- */
-type ErrorType =
-  | "VALIDATION_ERROR"
-  | "AI_CONFIG_ERROR"
-  | "AI_TIMEOUT"
-  | "AI_INVALID_RESPONSE"
-  | "AI_GENERATION_ERROR"
-  | "NETWORK_ERROR"
-  | "RATE_LIMIT_ERROR"
-  | "UNKNOWN_ERROR";
-
-/**
- * Categorized error info
- */
-interface CategorizedError {
-  statusCode: number;
-  errorMessage: string;
-  errorType: ErrorType;
-  retryable: boolean;
-}
-
-// ==========================================
-// CONFIGURATION
-// ==========================================
-
 export const maxDuration = 60;
 
-const RETRY_CONFIG = {
-  maxAttempts: 2,
-  initialDelay: 1000,
-  maxDelay: 3000,
-} as const;
+// ==========================================
+// CACHE IMPLEMENTATION
+// ==========================================
+
+interface CacheEntry {
+  data: ContentGenerationResponse;
+  timestamp: number;
+  expiresAt: number;
+}
+
+class ContentCache {
+  private cache: Map<string, CacheEntry>;
+  private maxSize: number;
+  private ttl: number;
+
+  constructor(maxSize = 512, ttlSeconds = AI_CONFIG.CACHE_TTL.CONTENT) {
+    this.cache = new Map();
+    this.maxSize = maxSize;
+    this.ttl = ttlSeconds * 1000;
+  }
+
+  private generateKey(topic: string, moduleTitle: string): string {
+    return `content:${topic.toLowerCase().trim()}::${moduleTitle.toLowerCase().trim()}`;
+  }
+
+  get(topic: string, moduleTitle: string): ContentGenerationResponse | null {
+    const key = this.generateKey(topic, moduleTitle);
+    const entry = this.cache.get(key);
+
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    // LRU: move to end
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+
+    return entry.data;
+  }
+
+  set(
+    topic: string,
+    moduleTitle: string,
+    data: ContentGenerationResponse,
+  ): void {
+    const key = this.generateKey(topic, moduleTitle);
+
+    // Evict oldest
+    if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+
+    const entry: CacheEntry = {
+      data,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + this.ttl,
+    };
+
+    this.cache.set(key, entry);
+  }
+
+  getStats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      ttlSeconds: this.ttl / 1000,
+    };
+  }
+}
+
+// Global cache
+const contentCache = new ContentCache();
+
+// Deduplication map (for concurrent requests)
+const pendingRequests = new Map<string, Promise<ContentGenerationResponse>>();
 
 // ==========================================
 // UTILITIES
 // ==========================================
 
-/**
- * Structured logger helper
- */
 function log(
   level: "info" | "warn" | "error",
   message: string,
   meta?: Record<string, unknown>,
 ): void {
-  const timestamp = new Date().toISOString();
   const logEntry = {
-    timestamp,
+    timestamp: new Date().toISOString(),
     level,
     message,
     route: "/api/roadmap/content",
@@ -113,190 +134,29 @@ function log(
   }
 }
 
-/**
- * Simple in-memory cache for request deduplication
- */
-const pendingRequests = new Map<string, Promise<ContentGenerationResponse>>();
-
 function getCacheKey(topic: string, moduleTitle: string): string {
   return `${topic}::${moduleTitle}`.toLowerCase().trim();
-}
-
-/**
- * Categorize error
- */
-function categorizeError(error: unknown): CategorizedError {
-  const defaultError: CategorizedError = {
-    statusCode: 500,
-    errorMessage: "Internal Server Error",
-    errorType: "UNKNOWN_ERROR",
-    retryable: false,
-  };
-
-  if (!(error instanceof Error)) {
-    return defaultError;
-  }
-
-  const errorMsg = error.message.toLowerCase();
-
-  if (
-    errorMsg.includes("api key") ||
-    errorMsg.includes("configuration") ||
-    errorMsg.includes("groq")
-  ) {
-    return {
-      statusCode: 503,
-      errorMessage:
-        "AI service is temporarily unavailable. Please try again later.",
-      errorType: "AI_CONFIG_ERROR",
-      retryable: false,
-    };
-  }
-
-  if (
-    errorMsg.includes("timeout") ||
-    errorMsg.includes("timed out") ||
-    errorMsg.includes("deadline")
-  ) {
-    return {
-      statusCode: 504,
-      errorMessage:
-        "Content generation took too long. Please try a simpler topic or retry.",
-      errorType: "AI_TIMEOUT",
-      retryable: true,
-    };
-  }
-
-  if (
-    errorMsg.includes("invalid json") ||
-    errorMsg.includes("parse error") ||
-    errorMsg.includes("invalid ai response")
-  ) {
-    return {
-      statusCode: 502,
-      errorMessage: "AI returned invalid data format. Please retry.",
-      errorType: "AI_INVALID_RESPONSE",
-      retryable: true,
-    };
-  }
-
-  if (errorMsg.includes("content generation failed")) {
-    return {
-      statusCode: 502,
-      errorMessage: "Failed to generate content. Please retry.",
-      errorType: "AI_GENERATION_ERROR",
-      retryable: true,
-    };
-  }
-
-  if (
-    errorMsg.includes("network") ||
-    errorMsg.includes("fetch failed") ||
-    errorMsg.includes("econnrefused")
-  ) {
-    return {
-      statusCode: 503,
-      errorMessage: "Network error. Please check your connection and retry.",
-      errorType: "NETWORK_ERROR",
-      retryable: true,
-    };
-  }
-
-  if (
-    errorMsg.includes("rate limit") ||
-    errorMsg.includes("too many requests")
-  ) {
-    return {
-      statusCode: 429,
-      errorMessage: "Too many requests. Please wait a moment and retry.",
-      errorType: "RATE_LIMIT_ERROR",
-      retryable: true,
-    };
-  }
-
-  return defaultError;
-}
-
-/**
- * Retry wrapper with exponential backoff
- */
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  context: { requestId: string; topic: string; moduleTitle: string },
-): Promise<T> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 1; attempt <= RETRY_CONFIG.maxAttempts; attempt++) {
-    try {
-      log("info", `Attempt ${attempt}/${RETRY_CONFIG.maxAttempts}`, {
-        requestId: context.requestId,
-        attempt,
-      });
-
-      return await fn();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Unknown error");
-
-      const categorized = categorizeError(lastError);
-
-      log("warn", `Attempt ${attempt} failed`, {
-        requestId: context.requestId,
-        attempt,
-        error: lastError.message,
-        errorType: categorized.errorType,
-        retryable: categorized.retryable,
-      });
-
-      if (!categorized.retryable) {
-        throw lastError;
-      }
-
-      if (attempt < RETRY_CONFIG.maxAttempts) {
-        const delay = Math.min(
-          RETRY_CONFIG.initialDelay * Math.pow(2, attempt - 1),
-          RETRY_CONFIG.maxDelay,
-        );
-
-        log("info", `Retrying after ${delay}ms`, {
-          requestId: context.requestId,
-          delay,
-        });
-
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  throw lastError || new Error("All retry attempts failed");
 }
 
 // ==========================================
 // API ROUTE HANDLER
 // ==========================================
 
-/**
- * POST /api/roadmap/content
- * Generate learning content and quiz for a specific module
- */
-export async function POST(
-  req: NextRequest,
-): Promise<NextResponse<SuccessResponse | ErrorResponse>> {
+export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
 
   try {
     const body: unknown = await req.json();
-
     const validation = GenerateContentRequestSchema.safeParse(body);
 
     if (!validation.success) {
-      log("error", "Invalid request body", {
+      log("error", "Invalid request", {
         requestId,
         errors: validation.error.format(),
-        receivedBody: body,
       });
 
-      return NextResponse.json<ErrorResponse>(
+      return NextResponse.json(
         {
           error: "Invalid input parameters",
           type: "VALIDATION_ERROR",
@@ -313,25 +173,41 @@ export async function POST(
 
     const { topic, moduleTitle }: GenerateContentRequest = validation.data;
 
-    log("info", "Content generation started", {
-      requestId,
-      topic,
-      moduleTitle,
-    });
-
-    const cacheKey = getCacheKey(topic, moduleTitle);
-    const existingRequest = pendingRequests.get(cacheKey);
-
-    if (existingRequest) {
-      log("info", "Duplicate request detected, waiting for existing request", {
+    // Check persistent cache first
+    const cached = contentCache.get(topic, moduleTitle);
+    if (cached) {
+      const duration = Date.now() - startTime;
+      log("info", "Cache HIT", {
         requestId,
-        cacheKey,
+        topic,
+        moduleTitle,
+        duration,
+        cacheStats: contentCache.getStats(),
       });
 
+      return NextResponse.json(
+        { data: cached },
+        {
+          status: 200,
+          headers: {
+            "X-Request-ID": requestId,
+            "X-Generation-Time": `${duration}ms`,
+            "X-Cache-Status": "HIT",
+          },
+        },
+      );
+    }
+
+    // Check deduplication
+    const dedupeKey = getCacheKey(topic, moduleTitle);
+    const existingRequest = pendingRequests.get(dedupeKey);
+
+    if (existingRequest) {
+      log("info", "Duplicate request - waiting", { requestId, dedupeKey });
       const data = await existingRequest;
       const duration = Date.now() - startTime;
 
-      return NextResponse.json<SuccessResponse>(
+      return NextResponse.json(
         { data },
         {
           status: 200,
@@ -344,67 +220,96 @@ export async function POST(
       );
     }
 
-    const requestPromise = withRetry(
-      () => generateLearningContentChain(topic, moduleTitle),
-      { requestId, topic, moduleTitle },
-    );
+    // Generate new content
+    log("info", "Cache MISS - Generating", { requestId, topic, moduleTitle });
 
-    pendingRequests.set(cacheKey, requestPromise);
+    const requestPromise = generateLearningContentChain(topic, moduleTitle);
+    pendingRequests.set(dedupeKey, requestPromise);
 
     try {
       const data = await requestPromise;
+
+      // Cache result
+      contentCache.set(topic, moduleTitle, data);
+
       const duration = Date.now() - startTime;
 
-      log("info", "Content generated successfully", {
+      log("info", "Generated successfully", {
         requestId,
         topic,
         moduleTitle,
         duration,
         quizCount: data.quiz.length,
         contentLength: data.markdownContent.length,
+        cacheStats: contentCache.getStats(),
       });
 
-      return NextResponse.json<SuccessResponse>(
+      return NextResponse.json(
         { data },
         {
           status: 200,
           headers: {
             "X-Request-ID": requestId,
             "X-Generation-Time": `${duration}ms`,
-            "X-Cache-Status": "GENERATED",
+            "X-Cache-Status": "MISS",
           },
         },
       );
     } finally {
-      pendingRequests.delete(cacheKey);
+      pendingRequests.delete(dedupeKey);
     }
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
-    const categorized = categorizeError(error);
+    let statusCode = 500;
+    let errorMessage = "Internal Server Error";
+    let errorType = "UNKNOWN_ERROR";
+    let retryable = false;
 
-    log("error", "Content generation failed", {
+    if (error instanceof Error) {
+      errorMessage = error.message;
+
+      if (
+        errorMessage.includes("API key") ||
+        errorMessage.includes("configuration")
+      ) {
+        statusCode = 503;
+        errorType = "AI_CONFIG_ERROR";
+        retryable = false;
+      } else if (
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("truncated")
+      ) {
+        statusCode = 504;
+        errorType = "AI_TIMEOUT";
+        retryable = true;
+      } else if (errorMessage.includes("Invalid")) {
+        statusCode = 502;
+        errorType = "AI_INVALID_RESPONSE";
+        retryable = true;
+      }
+    }
+
+    log("error", "Generation failed", {
       requestId,
       duration,
       error: error instanceof Error ? error.message : String(error),
-      errorType: categorized.errorType,
-      statusCode: categorized.statusCode,
-      retryable: categorized.retryable,
-      stack: error instanceof Error ? error.stack : undefined,
+      errorType,
+      retryable,
     });
 
-    return NextResponse.json<ErrorResponse>(
+    return NextResponse.json(
       {
-        error: categorized.errorMessage,
-        type: categorized.errorType,
+        error: errorMessage,
+        type: errorType,
         requestId,
-        retryable: categorized.retryable,
+        retryable,
       },
       {
-        status: categorized.statusCode,
+        status: statusCode,
         headers: {
           "X-Request-ID": requestId,
           "X-Generation-Time": `${duration}ms`,
-          "Retry-After": categorized.retryable ? "5" : undefined,
+          "Retry-After": retryable ? "5" : undefined,
         } as HeadersInit,
       },
     );

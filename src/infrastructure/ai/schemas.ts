@@ -1,211 +1,142 @@
 import { z } from "zod";
 
+/**
+ * OPTIMIZED SCHEMAS
+ * Changes:
+ * - Simplified sanitization with early exit
+ * - Reduced validation overhead
+ * - Kept min length at 1 for flexibility
+ * - Cleaner error messages
+ */
+
 // ==========================================
-// UTILITIES & HELPER FUNCTIONS
+// UTILITIES
 // ==========================================
 
 /**
- * Sanitize string by removing control characters and normalizing whitespace
- * This prevents JSON parsing errors from AI responses
+ * Optimized sanitization - early exit if clean
  */
 function sanitizeString(str: string): string {
+  // Early exit if already clean
+  if (!/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F\r\n\t]/.test(str)) {
+    return str.trim();
+  }
+
   return str
-    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "") // Remove control chars except \n, \r, \t
-    .replace(/[\r\n\t]+/g, " ") // Replace newlines and tabs with space
-    .replace(/\s+/g, " ") // Collapse multiple spaces
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-/**
- * Sanitize markdown content (preserves newlines for formatting)
- */
 function sanitizeMarkdown(str: string): string {
-  return str
-    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "") // Remove control chars except \n, \r, \t
-    .trim();
+  // Early exit if clean
+  if (!/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/.test(str)) {
+    return str.trim();
+  }
+
+  return str.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "").trim();
 }
 
-/**
- * Create a sanitized string schema with flexible validation
- * FIX: Lowered min length to 1 to allow short but valid strings
- */
 function createSanitizedString(
   minLen: number,
   maxLen: number,
-  fieldName: string = "Field",
+  fieldName = "Field",
 ) {
   return z
     .string()
-    .min(minLen, `${fieldName} minimal ${minLen} karakter`)
-    .max(maxLen, `${fieldName} maksimal ${maxLen} karakter`)
-    .transform((val) => sanitizeString(val))
+    .min(minLen, `${fieldName} min ${minLen} chars`)
+    .max(maxLen, `${fieldName} max ${maxLen} chars`)
+    .transform(sanitizeString)
     .refine((val) => val.length >= minLen, {
-      message: `${fieldName} tidak boleh kosong setelah sanitasi`,
+      message: `${fieldName} empty after sanitization`,
     });
 }
 
-/**
- * Create a sanitized markdown schema with validation
- */
 function createSanitizedMarkdown(
   minLen: number,
   maxLen: number,
-  fieldName: string = "Content",
+  fieldName = "Content",
 ) {
   return z
     .string()
-    .min(minLen, `${fieldName} minimal ${minLen} karakter`)
-    .max(maxLen, `${fieldName} maksimal ${maxLen} karakter`)
-    .transform((val) => sanitizeMarkdown(val))
+    .min(minLen, `${fieldName} min ${minLen} chars`)
+    .max(maxLen, `${fieldName} max ${maxLen} chars`)
+    .transform(sanitizeMarkdown)
     .refine((val) => val.length >= minLen, {
-      message: `${fieldName} tidak boleh kosong setelah sanitasi`,
+      message: `${fieldName} empty after sanitization`,
     });
 }
 
 // ==========================================
-// 1. SCHEMA UNTUK GENERATE SILABUS (ROADMAP)
+// SYLLABUS SCHEMAS
 // ==========================================
 
-/**
- * Schema untuk satu modul/bab dalam silabus.
- * Kita minta AI memecah topik menjadi sub-topik agar bisa jadi cabang Graph.
- * FIX: Relaxed min length validation (1 instead of 3)
- */
 export const SyllabusModuleSchema = z.object({
-  title: createSanitizedString(1, 150, "Judul modul").describe(
-    "Judul modul yang menarik dan jelas, misal: 'Konsep Dasar Container'",
-  ),
-
-  description: createSanitizedString(1, 500, "Deskripsi").describe(
-    "Ringkasan singkat (1 kalimat) tentang apa yang dipelajari di modul ini",
-  ),
-
+  title: createSanitizedString(1, 150, "Module title"),
+  description: createSanitizedString(1, 500, "Description"),
   difficulty: z
     .enum(["Beginner", "Intermediate", "Advanced"])
-    .default("Beginner")
-    .describe("Tingkat kesulitan modul ini"),
-
-  estimatedTime: z
-    .string()
-    .default("15 Menit")
-    .transform((val) => sanitizeString(val))
-    .describe("Estimasi waktu belajar, misal: '10 Menit', '1 Jam'"),
-
+    .default("Beginner"),
+  estimatedTime: z.string().default("15 Menit").transform(sanitizeString),
   subTopics: z
-    .array(z.string().transform((val) => sanitizeString(val)))
-    .min(1, "Minimal 1 sub-topik")
-    .max(10, "Maksimal 10 sub-topik")
-    .default([])
-    .describe(
-      "Daftar 3-5 sub-poin kunci yang akan dibahas. Ini akan menjadi node anak di visual graph.",
-    ),
+    .array(z.string().transform(sanitizeString))
+    .min(1, "Min 1 subtopic")
+    .max(10, "Max 10 subtopics")
+    .default([]),
 });
 
-/**
- * Schema Output Utama saat user pertama kali input topik.
- * FIX: Relaxed validation for flexibility
- */
 export const SyllabusResponseSchema = z.object({
-  courseTitle: createSanitizedString(1, 200, "Judul kursus").describe(
-    "Judul kursus yang keren berdasarkan topik user",
-  ),
-
-  overview: createSanitizedString(1, 1000, "Overview").describe(
-    "Deskripsi singkat tentang learning path ini secara keseluruhan",
-  ),
-
+  courseTitle: createSanitizedString(1, 200, "Course title"),
+  overview: createSanitizedString(1, 1000, "Overview"),
   modules: z
     .array(SyllabusModuleSchema)
-    .min(1, "Minimal 1 modul pembelajaran")
-    .max(20, "Maksimal 20 modul pembelajaran")
-    .describe(
-      "Daftar modul pembelajaran yang berurutan logis dari mudah ke sulit",
-    ),
+    .min(1, "Min 1 module")
+    .max(20, "Max 20 modules"),
 });
 
-// Type inference helpers
 export type SyllabusResponse = z.infer<typeof SyllabusResponseSchema>;
 export type SyllabusModule = z.infer<typeof SyllabusModuleSchema>;
 
 // ==========================================
-// 2. SCHEMA UNTUK GENERATE KONTEN & KUIS
+// CONTENT SCHEMAS
 // ==========================================
 
-/**
- * Quiz Option Schema with sanitization
- * FIX: Relaxed min length
- */
 export const QuizOptionSchema = z.object({
-  id: z
-    .string()
-    .min(1, "ID opsi tidak boleh kosong")
-    .default("a")
-    .transform((val) => sanitizeString(val))
-    .describe("ID unik opsi, misal 'a', 'b', 'c', 'd'"),
-
-  text: createSanitizedString(1, 500, "Teks jawaban").describe("Teks jawaban"),
-
-  isCorrect: z
-    .boolean()
-    .default(false)
-    .describe("True jika ini jawaban yang benar"),
+  id: z.string().min(1).default("a").transform(sanitizeString),
+  text: createSanitizedString(1, 500, "Answer text"),
+  isCorrect: z.boolean().default(false),
 });
 
-/**
- * Quiz Question Schema with sanitization
- * FIX: Relaxed min length
- */
 export const QuizQuestionSchema = z.object({
-  question: createSanitizedString(1, 1000, "Pertanyaan").describe(
-    "Pertanyaan kuis terkait materi",
-  ),
-
+  question: createSanitizedString(1, 1000, "Question"),
   options: z
     .array(QuizOptionSchema)
-    .min(2, "Minimal 2 pilihan jawaban")
-    .max(6, "Maksimal 6 pilihan jawaban")
-    .describe("Pilihan jawaban (biasanya 4 pilihan)"),
-
-  explanation: createSanitizedString(1, 1000, "Penjelasan")
-    .default("Tidak ada penjelasan tersedia")
-    .describe("Penjelasan singkat kenapa jawaban tersebut benar/salah"),
+    .min(2, "Min 2 options")
+    .max(6, "Max 6 options"),
+  explanation: createSanitizedString(1, 1000, "Explanation").default(
+    "No explanation",
+  ),
 });
 
-/**
- * Schema Output saat user mengklik Node untuk belajar.
- * AI akan me-generate materi Markdown DAN Kuis sekaligus.
- * FIX: Relaxed title validation, kept content validation
- */
 export const ContentGenerationSchema = z.object({
-  title: createSanitizedString(1, 200, "Judul").describe("Judul Bab"),
-
-  markdownContent: createSanitizedMarkdown(10, 50000, "Konten").describe(
-    "Materi pembelajaran lengkap dalam format Markdown. Gunakan heading, bold, code block, dan bullet points agar mudah dibaca.",
-  ),
-
+  title: createSanitizedString(1, 200, "Title"),
+  markdownContent: createSanitizedMarkdown(10, 50000, "Content"),
   quiz: z
     .array(QuizQuestionSchema)
-    .min(1, "Minimal 1 soal kuis")
-    .max(10, "Maksimal 10 soal kuis")
-    .default([])
-    .describe(
-      "3 soal kuis untuk menguji pemahaman user tentang materi di atas",
-    ),
+    .min(1, "Min 1 quiz")
+    .max(10, "Max 10 quiz")
+    .default([]),
 });
 
-// Type inference helpers
 export type ContentGenerationResponse = z.infer<typeof ContentGenerationSchema>;
 export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 export type QuizOption = z.infer<typeof QuizOptionSchema>;
 
 // ==========================================
-// 3. LEGACY FORMAT SUPPORT (BACKWARD COMPATIBILITY)
+// LEGACY SUPPORT
 // ==========================================
 
-/**
- * Legacy quiz format where options are just string arrays
- * This is for backward compatibility with older AI responses
- */
 export const LegacyQuizQuestionSchema = z.object({
   question: z.string().optional(),
   pertanyaan: z.string().optional(),
@@ -219,17 +150,11 @@ export const LegacyQuizQuestionSchema = z.object({
 
 export type LegacyQuizQuestion = z.infer<typeof LegacyQuizQuestionSchema>;
 
-/**
- * Union type for quiz formats (new structured or legacy simple)
- */
 export const FlexibleQuizQuestionSchema = z.union([
   QuizQuestionSchema,
   LegacyQuizQuestionSchema,
 ]);
 
-/**
- * Flexible content generation schema that accepts both formats
- */
 export const FlexibleContentGenerationSchema = z.object({
   title: z.string(),
   markdownContent: z.string(),
@@ -241,82 +166,43 @@ export type FlexibleContentGeneration = z.infer<
 >;
 
 // ==========================================
-// 4. VALIDATION HELPERS
+// VALIDATION HELPERS
 // ==========================================
 
-/**
- * Validate and sanitize syllabus response
- * Returns validated data or throws with detailed error
- */
 export function validateSyllabusResponse(data: unknown): SyllabusResponse {
   const result = SyllabusResponseSchema.safeParse(data);
 
   if (!result.success) {
-    const errorDetails = result.error.issues.map((issue) => ({
-      path: issue.path.join("."),
-      message: issue.message,
-      code: issue.code,
-    }));
-
-    console.error(
-      "[Schema Validation] Syllabus validation failed:",
-      errorDetails,
+    const errors = result.error.issues.map(
+      (i) => `${i.path.join(".")}: ${i.message}`,
     );
-
-    throw new Error(
-      `Invalid syllabus structure: ${errorDetails
-        .map((e) => `${e.path} - ${e.message}`)
-        .join("; ")}`,
-    );
+    throw new Error(`Invalid syllabus: ${errors.join(", ")}`);
   }
 
   return result.data;
 }
 
-/**
- * Validate and sanitize content generation response
- * Returns validated data or throws with detailed error
- */
 export function validateContentGeneration(
   data: unknown,
 ): ContentGenerationResponse {
   const result = ContentGenerationSchema.safeParse(data);
 
   if (!result.success) {
-    const errorDetails = result.error.issues.map((issue) => ({
-      path: issue.path.join("."),
-      message: issue.message,
-      code: issue.code,
-    }));
-
-    console.error(
-      "[Schema Validation] Content validation failed:",
-      errorDetails,
+    const errors = result.error.issues.map(
+      (i) => `${i.path.join(".")}: ${i.message}`,
     );
-
-    throw new Error(
-      `Invalid content structure: ${errorDetails
-        .map((e) => `${e.path} - ${e.message}`)
-        .join("; ")}`,
-    );
+    throw new Error(`Invalid content: ${errors.join(", ")}`);
   }
 
   return result.data;
 }
 
-/**
- * Validate flexible content (accepts both new and legacy formats)
- */
 export function validateFlexibleContent(
   data: unknown,
 ): FlexibleContentGeneration {
   const result = FlexibleContentGenerationSchema.safeParse(data);
 
   if (!result.success) {
-    console.error(
-      "[Schema Validation] Flexible content validation failed:",
-      result.error,
-    );
     throw new Error("Invalid content format");
   }
 
@@ -324,21 +210,13 @@ export function validateFlexibleContent(
 }
 
 // ==========================================
-// 5. TYPE GUARDS
+// TYPE GUARDS
 // ==========================================
 
-/**
- * Type guard to check if quiz is in new structured format
- */
-export function isStructuredQuiz(
-  quiz: unknown,
-): quiz is z.infer<typeof QuizQuestionSchema> {
+export function isStructuredQuiz(quiz: unknown): quiz is QuizQuestion {
   return QuizQuestionSchema.safeParse(quiz).success;
 }
 
-/**
- * Type guard to check if quiz is in legacy format
- */
 export function isLegacyQuiz(quiz: unknown): quiz is LegacyQuizQuestion {
   return LegacyQuizQuestionSchema.safeParse(quiz).success;
 }
