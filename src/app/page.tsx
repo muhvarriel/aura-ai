@@ -300,7 +300,6 @@ export default function LandingPage() {
         console.error("Generation Error:", error);
 
         // Error already handled above via toast
-        // This catch is for unexpected errors
         if (error instanceof Error && !error.message.includes("AI")) {
           addToast(
             "error",

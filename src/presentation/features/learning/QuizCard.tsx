@@ -18,6 +18,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [hasCalledComplete, setHasCalledComplete] = useState(false);
 
   // --- Defensive Checks ---
   if (!questions || questions.length === 0) {
@@ -61,12 +62,21 @@ export const QuizCard: React.FC<QuizCardProps> = ({
       setSelectedOptionId(null);
       setIsAnswered(false);
     } else {
+      // FIX: Calculate final score correctly
+      const finalScore =
+        score +
+        (currentQuestion.options.find((o) => o.id === selectedOptionId)
+          ?.isCorrect
+          ? 1
+          : 0);
+
       setShowResult(true);
-      // Kalkulasi skor akhir saat klik terakhir untuk memastikan sinkronisasi
-      const currentIsCorrect = currentQuestion.options.find(
-        (o) => o.id === selectedOptionId,
-      )?.isCorrect;
-      onComplete(score + (currentIsCorrect ? 1 : 0));
+
+      // FIX: Only call onComplete once
+      if (!hasCalledComplete) {
+        setHasCalledComplete(true);
+        onComplete(finalScore);
+      }
     }
   };
 

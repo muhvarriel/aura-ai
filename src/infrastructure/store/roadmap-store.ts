@@ -8,7 +8,7 @@ interface RoadmapState {
   roadmaps: Roadmap[];
   activeRoadmapId: string | null;
   contentCache: Record<string, LearningContent>;
-  _hasHydrated: boolean; // NEW: Track hydration status
+  _hasHydrated: boolean;
 }
 
 // Interface Actions (Function)
@@ -27,11 +27,15 @@ interface RoadmapActions {
   ) => void;
   unlockNextNode: (roadmapId: string, currentNodeId: string) => void;
 
+  // FIX: New combined method for completing node and unlocking next
+  completeNode: (roadmapId: string, nodeId: string) => void;
+
   // Content Caching
   cacheContent: (nodeId: string, content: LearningContent) => void;
   getContent: (nodeId: string) => LearningContent | undefined;
+  clearContentCache: () => void; // FIX: Add cache clearing
 
-  // NEW: Hydration Control
+  // Hydration Control
   setHasHydrated: (state: boolean) => void;
 }
 
@@ -45,7 +49,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
       roadmaps: [],
       activeRoadmapId: null,
       contentCache: {},
-      _hasHydrated: false, // NEW: Initial false
+      _hasHydrated: false,
 
       // Actions Implementation
       addRoadmap: (roadmap) =>
@@ -85,25 +89,46 @@ export const useRoadmapStore = create<RoadmapStore>()(
               (completedCount / updatedNodes.length) * 100,
             );
 
+            console.log(
+              `[Store] Node ${nodeId} status updated to ${status}. Progress: ${progress}%`,
+            );
+
             return { ...map, nodes: updatedNodes, progress };
           }),
         })),
 
       unlockNextNode: (roadmapId, currentNodeId) => {
         const roadmap = get().roadmaps.find((r) => r.id === roadmapId);
-        if (!roadmap) return;
+        if (!roadmap) {
+          console.warn(`[Store] Roadmap ${roadmapId} not found`);
+          return;
+        }
 
         const currentNode = roadmap.nodes.find((n) => n.id === currentNodeId);
-        if (!currentNode) return;
+        if (!currentNode) {
+          console.warn(`[Store] Node ${currentNodeId} not found in roadmap`);
+          return;
+        }
 
         const childrenIds = currentNode.childrenIds;
+
+        if (!childrenIds || childrenIds.length === 0) {
+          console.log(
+            `[Store] Node ${currentNodeId} has no children to unlock`,
+          );
+          return;
+        }
 
         set((state) => ({
           roadmaps: state.roadmaps.map((map) => {
             if (map.id !== roadmapId) return map;
 
             const updatedNodes = map.nodes.map((node) => {
+              // FIX: Only unlock if currently locked
               if (childrenIds.includes(node.id) && node.status === "locked") {
+                console.log(
+                  `[Store] Unlocking child node: ${node.id} (${node.label})`,
+                );
                 return {
                   ...node,
                   status: "unlocked" as NodeStatus,
@@ -117,16 +142,37 @@ export const useRoadmapStore = create<RoadmapStore>()(
         }));
       },
 
-      cacheContent: (nodeId, content) =>
+      // FIX: Combined method for completing node
+      completeNode: (roadmapId, nodeId) => {
+        console.log(
+          `[Store] Completing node ${nodeId} in roadmap ${roadmapId}`,
+        );
+
+        // Update status to completed
+        get().updateNodeStatus(roadmapId, nodeId, "completed");
+
+        // Unlock next nodes
+        get().unlockNextNode(roadmapId, nodeId);
+      },
+
+      cacheContent: (nodeId, content) => {
+        console.log(`[Store] Caching content for node: ${nodeId}`);
         set((state) => ({
           contentCache: { ...state.contentCache, [nodeId]: content },
-        })),
+        }));
+      },
 
       getContent: (nodeId) => {
         return get().contentCache[nodeId];
       },
 
-      // NEW: Manual hydration setter
+      // FIX: Add cache clearing capability
+      clearContentCache: () => {
+        console.log("[Store] Clearing content cache");
+        set({ contentCache: {} });
+      },
+
+      // Manual hydration setter
       setHasHydrated: (state) => {
         set({
           _hasHydrated: state,
@@ -136,11 +182,9 @@ export const useRoadmapStore = create<RoadmapStore>()(
     {
       name: "aura-ai-storage",
       storage: createJSONStorage(() => localStorage),
-      skipHydration: true, // Keep true to prevent SSR issues
+      skipHydration: true,
 
-      // NEW: onRehydrateStorage callback
       onRehydrateStorage: () => (state) => {
-        // This callback runs after store rehydrates from localStorage
         if (state) {
           state.setHasHydrated(true);
         }
@@ -149,8 +193,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
   ),
 );
 
-// NEW: Optimized Selectors (Prevent unnecessary re-renders)
-// Export these for use in components instead of inline selectors
+// Optimized Selectors
 export const selectRoadmapById = (id: string) => (state: RoadmapStore) =>
   state.roadmaps.find((r) => r.id === id);
 
@@ -161,6 +204,11 @@ export const selectUnlockNext = (state: RoadmapStore) => state.unlockNextNode;
 export const selectUpdateStatus = (state: RoadmapStore) =>
   state.updateNodeStatus;
 
+export const selectCompleteNode = (state: RoadmapStore) => state.completeNode;
+
 export const selectCacheContent = (state: RoadmapStore) => state.cacheContent;
 
 export const selectGetContent = (state: RoadmapStore) => state.getContent;
+
+export const selectClearCache = (state: RoadmapStore) =>
+  state.clearContentCache;

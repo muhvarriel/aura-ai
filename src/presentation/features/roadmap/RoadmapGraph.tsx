@@ -26,23 +26,10 @@ import { RoadmapNode, NodeStatus } from "@/core/entities/roadmap";
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP GRAPH - ENHANCED VERSION (FIXED)
- * ═══════════════════════════════════════════════════════════════
- * Features:
- * - Multi-layer background patterns with parallax effect
- * - Animated edges with flow particles
- * - Smooth zoom transitions with spring physics
- * - Custom minimap with gradient overlay
- * - Interactive controls with hover states
- *
- * TypeScript Fixes:
- * - Fixed onMoveEnd type signature (now uses OnMove from @xyflow/react)
- * - Removed invalid style.button property
- * - Cleaned up unused imports (EdgeLabelRenderer, labelX, labelY)
+ * ROADMAP GRAPH - ENHANCED VERSION
  * ═══════════════════════════════════════════════════════════════
  */
 
-// Move nodeTypes outside component for stable reference
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
 };
@@ -52,7 +39,6 @@ interface RoadmapGraphProps {
   onNodeClick: (nodeId: string) => void;
 }
 
-// Type for custom node data
 type CustomNodeData = {
   status: NodeStatus;
   label?: string;
@@ -63,7 +49,6 @@ type CustomNodeData = {
 
 /**
  * Custom Animated Edge Component
- * Features flow particles and status-based styling
  */
 const AnimatedEdge: React.FC<EdgeProps> = ({
   id,
@@ -77,7 +62,6 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
   markerEnd,
   data,
 }) => {
-  // Only get edgePath, ignore labelX and labelY to avoid unused variable warning
   const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
@@ -87,14 +71,12 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
     targetPosition,
   });
 
-  // Determine if edge should be animated based on source node status
   const isActive =
     data?.sourceStatus === "unlocked" || data?.sourceStatus === "completed";
   const isCompleted = data?.sourceStatus === "completed";
 
   return (
     <>
-      {/* Main Edge Path */}
       <path
         id={id}
         style={{
@@ -108,7 +90,6 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
         markerEnd={markerEnd}
       />
 
-      {/* Animated Flow Particles for Active Edges */}
       {isActive && (
         <>
           <circle r="3" fill={isCompleted ? "#000000" : "#525252"}>
@@ -138,7 +119,6 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
         </>
       )}
 
-      {/* Glow Effect for Completed Edges */}
       {isCompleted && (
         <path
           style={{
@@ -155,9 +135,6 @@ const AnimatedEdge: React.FC<EdgeProps> = ({
   );
 };
 
-/**
- * Custom edge types configuration
- */
 const edgeTypes = {
   animated: AnimatedEdge,
 };
@@ -167,7 +144,6 @@ const edgeTypes = {
  */
 const MultiLayerBackground: React.FC = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
-    {/* Layer 1: Large Grid */}
     <Background
       id="bg-1"
       color="#e5e5e5"
@@ -176,8 +152,6 @@ const MultiLayerBackground: React.FC = () => (
       variant={BackgroundVariant.Lines}
       style={{ opacity: 0.15 }}
     />
-
-    {/* Layer 2: Small Dots */}
     <Background
       id="bg-2"
       color="#000000"
@@ -186,8 +160,6 @@ const MultiLayerBackground: React.FC = () => (
       variant={BackgroundVariant.Dots}
       style={{ opacity: 0.08 }}
     />
-
-    {/* Layer 3: Radial Gradient Overlay */}
     <div
       className="absolute inset-0"
       style={{
@@ -219,7 +191,6 @@ const StatsPanel: React.FC<{
         className="bg-white/90 backdrop-blur-md border border-neutral-200 rounded-2xl px-5 py-4 shadow-xl"
       >
         <div className="flex flex-col gap-3 min-w-[180px]">
-          {/* Progress Bar */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
@@ -241,7 +212,6 @@ const StatsPanel: React.FC<{
             </div>
           </div>
 
-          {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-2 pt-2 border-t border-neutral-100">
             <div className="text-center">
               <div className="text-lg font-bold text-black">{totalNodes}</div>
@@ -274,12 +244,10 @@ const StatsPanel: React.FC<{
 
 /**
  * RoadmapGraph Component
- * Enhanced interactive learning roadmap with ReactFlow
  */
 function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Calculate graph layout with enhanced edges
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
     console.log("🔄 Recalculating graph layout", {
       nodeCount: nodes.length,
@@ -287,7 +255,6 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
 
     const layout = getGraphLayout(nodes);
 
-    // Enhance edges with status metadata
     const enhancedEdges = layout.reactFlowEdges.map((edge) => {
       const sourceNode = nodes.find((n) => n.id === edge.source);
       return {
@@ -308,11 +275,9 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
     };
   }, [nodes]);
 
-  // React Flow state hooks
   const [rfNodes, , onNodesChange] = useNodesState<Node>(reactFlowNodes);
   const [rfEdges, , onEdgesChange] = useEdgesState<Edge>(reactFlowEdges);
 
-  // Calculate stats
   const stats = useMemo(() => {
     const total = nodes.length;
     const completed = nodes.filter((n) => n.status === "completed").length;
@@ -320,28 +285,32 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
     return { total, completed, unlocked };
   }, [nodes]);
 
-  // Node click handler
+  // FIX: Enhanced node click handler with better logging
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
       const nodeData = node.data as CustomNodeData;
 
+      console.log(`[RoadmapGraph] Node clicked:`, {
+        id: node.id,
+        label: nodeData.label,
+        status: nodeData.status,
+      });
+
       if (nodeData.status === "locked") {
-        console.log("🔒 Node is locked:", node.id);
+        console.log("🔒 Node is locked, preventing click:", node.id);
         return;
       }
 
-      console.log("✅ Node clicked:", node.id, nodeData.label);
+      console.log("✅ Opening drawer for node:", node.id);
       onNodeClick(node.id);
     },
     [onNodeClick],
   );
 
-  // FIX: Proper type signature using OnMove from @xyflow/react
   const handleMoveEnd: OnMove = useCallback((event, viewport) => {
     setZoomLevel(viewport.zoom);
   }, []);
 
-  // ReactFlow props
   const reactFlowProps = useMemo(
     () => ({
       nodes: rfNodes,
@@ -386,24 +355,20 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
   return (
     <div className="w-full h-full min-h-[600px] bg-white relative">
       <ReactFlow {...reactFlowProps}>
-        {/* Enhanced Multi-layer Background */}
         <MultiLayerBackground />
 
-        {/* Stats Panel */}
         <StatsPanel
           totalNodes={stats.total}
           completedNodes={stats.completed}
           unlockedNodes={stats.unlocked}
         />
 
-        {/* Enhanced Controls - FIX: Removed invalid style.button property */}
         <Controls
           position="bottom-left"
           showInteractive={false}
           className="!bg-white/90 !backdrop-blur-md !border-neutral-200 !shadow-2xl !rounded-2xl !m-6 !overflow-hidden [&>button]:!bg-white [&>button]:!border-b [&>button]:!border-b-neutral-100 [&>button]:!text-black [&>button:hover]:!bg-neutral-50 [&>button]:!transition-all [&>button]:!duration-200"
         />
 
-        {/* MiniMap with Custom Styling */}
         <MiniMap
           position="bottom-right"
           className="!bg-white/90 !backdrop-blur-md !border-2 !border-neutral-200 !shadow-2xl !rounded-2xl !m-6 !overflow-hidden"
@@ -428,7 +393,6 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
           nodeBorderRadius={16}
         />
 
-        {/* Zoom Level Indicator */}
         <Panel position="top-left" className="m-6 pl-16 pt-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -443,7 +407,6 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
   );
 }
 
-// Memoize entire component to prevent unnecessary re-renders
 export default memo(RoadmapGraph, (prevProps, nextProps) => {
   const nodesEqual =
     prevProps.nodes.length === nextProps.nodes.length &&

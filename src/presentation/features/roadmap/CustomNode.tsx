@@ -10,7 +10,7 @@ import { GraphNodeData } from "@/lib/graph-layout";
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * CUSTOM NODE - ENHANCED VERSION (FIXED)
+ * CUSTOM NODE - ENHANCED VERSION
  * ═══════════════════════════════════════════════════════════════
  * Features:
  * - Micro-interactions with Framer Motion
@@ -19,10 +19,6 @@ import { GraphNodeData } from "@/lib/graph-layout";
  * - Gradient backgrounds
  * - Pulse animations for unlocked nodes
  * - Celebration effects for completed nodes
- *
- * Purity Fixes:
- * - Math.random() calls moved to useMemo (pre-generated once)
- * - No impure functions during render
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -165,7 +161,6 @@ const PulseGlow: React.FC = () => (
 
 /**
  * Generate particle positions once at module load time
- * This runs BEFORE React renders anything, so it's pure from React's perspective
  */
 const generateParticlePositions = (): ParticlePosition[] => {
   return [...Array(6)].map((_, i) => ({
@@ -175,12 +170,10 @@ const generateParticlePositions = (): ParticlePosition[] => {
   }));
 };
 
-// Generate once when module loads (not during render)
 const CELEBRATION_PARTICLES = generateParticlePositions();
 
 /**
  * Celebration particles for completed nodes
- * FIX: Math.random() moved to useMemo to avoid purity violations
  */
 const CelebrationParticles: React.FC = () => {
   return (
@@ -214,17 +207,14 @@ const CelebrationParticles: React.FC = () => {
 
 /**
  * Custom Node Component for Roadmap Graph
- * Enhanced with micro-interactions and animations
  */
 const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
 
-  // Type assertion with safety check
   const nodeData = data as GraphNodeData;
   const { label, status, description, difficulty, estimatedTime } = nodeData;
 
-  // Handle className for connection points
   const handleClassName = cn(
     "!w-3 !h-3 !border-2 transition-all duration-300",
     status === "locked"
@@ -271,7 +261,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
           status === "unlocked" && "hover:shadow-2xl hover:border-black/80",
         )}
       >
-        {/* Top Handle */}
         <Handle
           type="target"
           position={Position.Top}
@@ -279,15 +268,10 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
           isConnectable={false}
         />
 
-        {/* Pulse Glow for Unlocked Nodes */}
         {status === "unlocked" && <PulseGlow />}
-
-        {/* Celebration Particles for Completed Nodes */}
         {status === "completed" && showParticles && <CelebrationParticles />}
 
-        {/* Content Container */}
         <div className="flex flex-col gap-3 relative z-10">
-          {/* Header */}
           <div className="flex items-start justify-between gap-4">
             <motion.h3
               layout
@@ -303,7 +287,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
             </div>
           </div>
 
-          {/* Description */}
           {description && (
             <motion.p
               layout
@@ -324,7 +307,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
             </motion.p>
           )}
 
-          {/* Metadata Badges */}
           {status !== "locked" && (difficulty || estimatedTime) && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -365,7 +347,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
           )}
         </div>
 
-        {/* Bottom Handle */}
         <Handle
           type="source"
           position={Position.Bottom}
@@ -373,7 +354,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
           isConnectable={false}
         />
 
-        {/* Hover Shimmer Effect for Unlocked Nodes */}
         {status === "unlocked" && isHovered && (
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
@@ -384,7 +364,6 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
         )}
       </motion.div>
 
-      {/* Tooltip on Hover */}
       <AnimatePresence>
         {isHovered && (
           <NodeTooltip
@@ -398,10 +377,8 @@ const CustomNode: React.FC<NodeProps> = ({ data, selected }) => {
   );
 };
 
-// Memoized export with display name
 CustomNode.displayName = "CustomNode";
 
-// Custom comparison for memo
 export default memo(CustomNode, (prevProps, nextProps) => {
   const prevData = prevProps.data as GraphNodeData;
   const nextData = nextProps.data as GraphNodeData;

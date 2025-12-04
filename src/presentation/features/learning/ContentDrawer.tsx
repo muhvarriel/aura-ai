@@ -183,6 +183,7 @@ export default function ContentDrawer({
   // Refs
   const abortControllerRef = useRef<AbortController | null>(null);
   const fetchAttemptRef = useRef<number>(0);
+  const lastFetchKeyRef = useRef<string>("");
 
   /**
    * Categorize error based on message
@@ -255,9 +256,12 @@ export default function ContentDrawer({
         abortControllerRef.current = null;
       }
 
-      // Reset state
+      // FIX: Reset ALL state when drawer closes to prevent stale content
+      setContent(null);
       setLoadingState("idle");
       setError(null);
+      setRetryCount(0);
+      lastFetchKeyRef.current = "";
     }
 
     return () => {
@@ -268,26 +272,41 @@ export default function ContentDrawer({
   }, [isOpen]);
 
   /**
-   * Load data when node changes or drawer opens
+   * Load data when node OR topic changes or drawer opens
+   * FIX: Added topic to dependencies to refetch when syllabus changes
    */
   useEffect(() => {
-    if (isOpen && node) {
-      // Reset states for new node
-      setContent(null);
-      setError(null);
-      setRetryCount(0);
-      setLoadingState("idle");
-      loadData();
+    if (isOpen && node && topic) {
+      // Create unique key for this fetch
+      const fetchKey = `${topic}::${node.id}::${node.label}`;
+
+      // FIX: Only refetch if key changed (prevents unnecessary refetch but allows topic change)
+      if (fetchKey !== lastFetchKeyRef.current) {
+        lastFetchKeyRef.current = fetchKey;
+
+        // Reset states for new node/topic combination
+        setContent(null);
+        setError(null);
+        setRetryCount(0);
+        setLoadingState("idle");
+
+        console.log("[ContentDrawer] Loading new content for:", {
+          topic,
+          nodeId: node.id,
+          nodeLabel: node.label,
+        });
+        loadData();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node?.id, isOpen]);
+  }, [node?.id, node?.label, topic, isOpen]);
 
   /**
    * Load content with abort controller support
    */
   const loadData = useCallback(async () => {
-    if (!node) {
-      console.warn("[ContentDrawer] No node provided");
+    if (!node || !topic) {
+      console.warn("[ContentDrawer] No node or topic provided");
       return;
     }
 
@@ -304,7 +323,7 @@ export default function ContentDrawer({
     setError(null);
 
     console.log(
-      `[ContentDrawer] Loading content for: ${node.label} (attempt ${currentAttempt})`,
+      `[ContentDrawer] Loading content for: ${node.label} with topic: ${topic} (attempt ${currentAttempt})`,
     );
 
     try {
@@ -499,7 +518,8 @@ export default function ContentDrawer({
 
                       {/* Quiz */}
                       <QuizCard
-                        questions={content.quizzes}
+                        key={content.nodeId}
+                        questions={content.quizzes || []}
                         onComplete={onQuizComplete}
                       />
                     </div>

@@ -14,7 +14,7 @@ export const useStore = <T, F>(
   store: (callback: (state: T) => unknown) => unknown,
   callback: (state: T) => F,
 ): F => {
-  // FIX: Langsung ambil result sebagai initial value
+  // Langsung ambil result sebagai initial value
   // Ini mencegah undefined flash di first render
   const result = store(callback) as F;
 
@@ -26,7 +26,7 @@ export const useStore = <T, F>(
     setData(result);
   }, [result]);
 
-  // FIX: Return data yang selalu terdefinisi
+  // Return data yang selalu terdefinisi
   // Di initial render, return result langsung
   // Di subsequent renders, return state yang sudah ter-sync
   return data;

@@ -18,8 +18,7 @@ import {
   useRoadmapStore,
   selectRoadmapById,
   selectHasHydrated,
-  selectUnlockNext,
-  selectUpdateStatus,
+  selectCompleteNode,
   selectCacheContent,
   selectGetContent,
 } from "@/infrastructure/store/roadmap-store";
@@ -36,20 +35,12 @@ import {
  * ═══════════════════════════════════════════════════════════════
  * ROADMAP PAGE - ENHANCED VERSION
  * ═══════════════════════════════════════════════════════════════
- * Features:
- * - Smooth header animations with stagger effect
- * - Enhanced progress bar with gradient and glow
- * - Backdrop blur effects for depth
- * - Improved loading states with skeleton
- * - Menu dropdown with actions
- * - Celebratory confetti on completion milestones
- * ═══════════════════════════════════════════════════════════════
  */
 
 // --- Type Definitions ---
 
 /**
- * Raw quiz option from API (can be string or structured object)
+ * Raw quiz option from API
  */
 type RawQuizOption =
   | string
@@ -60,7 +51,7 @@ type RawQuizOption =
     };
 
 /**
- * Raw quiz item from API - handles both legacy and new format
+ * Raw quiz item from API
  */
 interface RawQuizItem {
   question?: string;
@@ -85,15 +76,12 @@ interface ApiContentResponse {
 }
 
 /**
- * Type guard to check if value is a non-empty string
+ * Type guards
  */
 function isValidString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/**
- * Type guard to check if value is a structured option object
- */
 function isStructuredOption(
   value: unknown,
 ): value is { id?: string; text?: string; isCorrect?: boolean } {
@@ -106,7 +94,7 @@ function isStructuredOption(
 }
 
 /**
- * Transform raw quiz options to QuizOption[]
+ * Transform quiz options
  */
 function transformQuizOptions(
   rawOptions: RawQuizOption[] | undefined,
@@ -152,7 +140,7 @@ function transformQuizOptions(
 }
 
 /**
- * Transform raw quiz data to QuizQuestion[]
+ * Transform quiz data
  */
 function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
   if (!Array.isArray(rawQuiz) || rawQuiz.length === 0) {
@@ -195,7 +183,7 @@ function transformQuizData(rawQuiz: RawQuizItem[]): QuizQuestion[] {
 }
 
 /**
- * Enhanced Loading Component
+ * Loading Component
  */
 const LoadingState: React.FC = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-white to-neutral-50 text-black">
@@ -205,7 +193,6 @@ const LoadingState: React.FC = () => (
       transition={{ duration: 0.5 }}
       className="text-center space-y-6"
     >
-      {/* Animated Logo/Icon */}
       <motion.div
         animate={{
           rotate: [0, 360],
@@ -220,7 +207,6 @@ const LoadingState: React.FC = () => (
         <Sparkles size={36} />
       </motion.div>
 
-      {/* Loading Text */}
       <div className="space-y-2">
         <motion.p
           initial={{ opacity: 0 }}
@@ -243,7 +229,6 @@ const LoadingState: React.FC = () => (
         </motion.div>
       </div>
 
-      {/* Progress Skeleton */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -268,7 +253,7 @@ const LoadingState: React.FC = () => (
 );
 
 /**
- * Not Found State Component
+ * Not Found Component
  */
 const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
   onBackClick,
@@ -303,7 +288,7 @@ const NotFoundState: React.FC<{ onBackClick: () => void }> = ({
 );
 
 /**
- * Menu Dropdown Component
+ * Menu Dropdown
  */
 const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   isOpen,
@@ -312,7 +297,6 @@ const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   <AnimatePresence>
     {isOpen && (
       <>
-        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -321,7 +305,6 @@ const MenuDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
           className="fixed inset-0 z-40"
         />
 
-        {/* Menu Panel */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -383,8 +366,8 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     useCallback((state) => selectRoadmapById(paramsId)(state), [paramsId]),
   );
 
-  const unlockNext = useRoadmapStore(selectUnlockNext);
-  const updateStatus = useRoadmapStore(selectUpdateStatus);
+  // FIX: Use completeNode instead of separate updateStatus + unlockNext
+  const completeNode = useRoadmapStore(selectCompleteNode);
   const cacheContent = useRoadmapStore(selectCacheContent);
   const getCachedContent = useRoadmapStore(selectGetContent);
 
@@ -393,11 +376,12 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
 
   // Node click handler
   const handleNodeClick = useCallback((nodeId: string) => {
+    console.log(`[RoadmapPage] Node clicked: ${nodeId}`);
     setSelectedNodeId(nodeId);
     setIsDrawerOpen(true);
   }, []);
 
-  // Content fetcher
+  // FIX: Content fetcher with proper topic parameter
   const fetchContent = useCallback(
     async (
       topic: string,
@@ -408,9 +392,13 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         return null;
       }
 
-      const cached = getCachedContent(selectedNodeId);
+      // FIX: Check cache with key that includes topic
+      const cacheKey = `${topic}::${selectedNodeId}`;
+      const cached = getCachedContent(cacheKey);
       if (cached) {
-        console.log(`[Fetch Content] Using cached content for: ${nodeTitle}`);
+        console.log(
+          `[Fetch Content] Using cached content for: ${nodeTitle} (topic: ${topic})`,
+        );
         return cached;
       }
 
@@ -421,7 +409,11 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
       abortControllerRef.current = new AbortController();
 
       try {
-        console.log(`[Fetch Content] Fetching: ${nodeTitle}`);
+        console.log(`[Fetch Content] Fetching new content:`, {
+          topic,
+          nodeTitle,
+          nodeId: selectedNodeId,
+        });
 
         const res = await fetch("/api/roadmap/content", {
           method: "POST",
@@ -453,7 +445,8 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           quizzes: mappedQuizzes,
         };
 
-        cacheContent(selectedNodeId, content);
+        // FIX: Cache with key that includes topic
+        cacheContent(cacheKey, content);
         return content;
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
@@ -468,7 +461,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
     [selectedNodeId, getCachedContent, cacheContent],
   );
 
-  // Quiz completion handler
+  // FIX: Quiz completion handler using completeNode
   const handleQuizComplete = useCallback(
     (score: number) => {
       if (!selectedNodeId || !roadmap) {
@@ -478,10 +471,12 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
 
       console.log(`[Quiz Complete] Node: ${selectedNodeId}, Score: ${score}`);
 
-      updateStatus(roadmap.id, selectedNodeId, "completed");
-      unlockNext(roadmap.id, selectedNodeId);
+      // FIX: Use combined method that updates status AND unlocks next nodes
+      completeNode(roadmap.id, selectedNodeId);
+
+      console.log(`[Quiz Complete] Node completed and next nodes unlocked`);
     },
-    [selectedNodeId, roadmap, updateStatus, unlockNext],
+    [selectedNodeId, roadmap, completeNode],
   );
 
   // Cleanup on unmount
@@ -506,7 +501,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   // Main UI
   return (
     <div className="h-screen w-screen flex flex-col bg-white font-sans text-black overflow-hidden relative">
-      {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-white via-neutral-50 to-white -z-10" />
 
       {/* Header */}
@@ -518,7 +512,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
           transition={{ delay: 0.1, type: "spring", damping: 20 }}
           className="flex flex-col items-start gap-4 pointer-events-auto"
         >
-          {/* Back Button */}
           <motion.button
             whileHover={{ scale: 1.05, rotate: -5 }}
             whileTap={{ scale: 0.95 }}
@@ -528,14 +521,12 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
             <ArrowLeft size={18} />
           </motion.button>
 
-          {/* Title Card */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, type: "spring", damping: 20 }}
             className="glass p-5 rounded-3xl border-2 border-neutral-100 shadow-2xl max-w-md backdrop-blur-xl"
           >
-            {/* Badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -548,7 +539,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
               </span>
             </motion.div>
 
-            {/* Title */}
             <motion.h1
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -558,7 +548,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
               {roadmap.topic}
             </motion.h1>
 
-            {/* Enhanced Progress Bar */}
             <motion.div
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
@@ -577,7 +566,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
                     backgroundSize: "200% 100%",
                   }}
                 >
-                  {/* Shimmer Effect */}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
                     animate={{
@@ -619,7 +607,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
             <MoreHorizontal size={20} />
           </motion.button>
 
-          {/* Menu Dropdown */}
           <MenuDropdown
             isOpen={isMenuOpen}
             onClose={() => setIsMenuOpen(false)}
@@ -650,7 +637,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   );
 };
 
-// Root component with ReactFlowProvider
+// Root component
 export default function RoadmapPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;

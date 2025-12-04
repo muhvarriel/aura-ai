@@ -70,14 +70,12 @@ interface CategorizedError {
 // CONFIGURATION
 // ==========================================
 
-// Timeout configuration (Vercel limit)
-export const maxDuration = 60; // 60 seconds for AI generation
+export const maxDuration = 60;
 
-// Retry configuration
 const RETRY_CONFIG = {
   maxAttempts: 2,
-  initialDelay: 1000, // 1 second
-  maxDelay: 3000, // 3 seconds
+  initialDelay: 1000,
+  maxDelay: 3000,
 } as const;
 
 // ==========================================
@@ -117,7 +115,6 @@ function log(
 
 /**
  * Simple in-memory cache for request deduplication
- * Prevents duplicate concurrent requests for same content
  */
 const pendingRequests = new Map<string, Promise<ContentGenerationResponse>>();
 
@@ -126,7 +123,7 @@ function getCacheKey(topic: string, moduleTitle: string): string {
 }
 
 /**
- * Categorize error and determine appropriate response
+ * Categorize error
  */
 function categorizeError(error: unknown): CategorizedError {
   const defaultError: CategorizedError = {
@@ -142,7 +139,6 @@ function categorizeError(error: unknown): CategorizedError {
 
   const errorMsg = error.message.toLowerCase();
 
-  // AI Configuration Error
   if (
     errorMsg.includes("api key") ||
     errorMsg.includes("configuration") ||
@@ -157,7 +153,6 @@ function categorizeError(error: unknown): CategorizedError {
     };
   }
 
-  // Timeout Error
   if (
     errorMsg.includes("timeout") ||
     errorMsg.includes("timed out") ||
@@ -172,7 +167,6 @@ function categorizeError(error: unknown): CategorizedError {
     };
   }
 
-  // Invalid Response Format
   if (
     errorMsg.includes("invalid json") ||
     errorMsg.includes("parse error") ||
@@ -186,7 +180,6 @@ function categorizeError(error: unknown): CategorizedError {
     };
   }
 
-  // Content Generation Failed
   if (errorMsg.includes("content generation failed")) {
     return {
       statusCode: 502,
@@ -196,7 +189,6 @@ function categorizeError(error: unknown): CategorizedError {
     };
   }
 
-  // Network Errors
   if (
     errorMsg.includes("network") ||
     errorMsg.includes("fetch failed") ||
@@ -210,7 +202,6 @@ function categorizeError(error: unknown): CategorizedError {
     };
   }
 
-  // Rate Limit
   if (
     errorMsg.includes("rate limit") ||
     errorMsg.includes("too many requests")
@@ -256,12 +247,10 @@ async function withRetry<T>(
         retryable: categorized.retryable,
       });
 
-      // Don't retry if error is not retryable
       if (!categorized.retryable) {
         throw lastError;
       }
 
-      // Don't wait after last attempt
       if (attempt < RETRY_CONFIG.maxAttempts) {
         const delay = Math.min(
           RETRY_CONFIG.initialDelay * Math.pow(2, attempt - 1),
@@ -278,7 +267,6 @@ async function withRetry<T>(
     }
   }
 
-  // All attempts failed
   throw lastError || new Error("All retry attempts failed");
 }
 
@@ -297,10 +285,8 @@ export async function POST(
   const startTime = Date.now();
 
   try {
-    // Parse request body
     const body: unknown = await req.json();
 
-    // Validate input with Zod
     const validation = GenerateContentRequestSchema.safeParse(body);
 
     if (!validation.success) {
@@ -333,7 +319,6 @@ export async function POST(
       moduleTitle,
     });
 
-    // Check for duplicate concurrent requests (deduplication)
     const cacheKey = getCacheKey(topic, moduleTitle);
     const existingRequest = pendingRequests.get(cacheKey);
 
@@ -359,7 +344,6 @@ export async function POST(
       );
     }
 
-    // Create new request with retry logic
     const requestPromise = withRetry(
       () => generateLearningContentChain(topic, moduleTitle),
       { requestId, topic, moduleTitle },
@@ -392,7 +376,6 @@ export async function POST(
         },
       );
     } finally {
-      // Clean up pending request map
       pendingRequests.delete(cacheKey);
     }
   } catch (error: unknown) {
