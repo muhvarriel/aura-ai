@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, memo } from "react";
 import {
   ReactFlow,
   Controls,
@@ -18,9 +18,16 @@ import CustomNode from "./CustomNode";
 import { getGraphLayout } from "@/lib/graph-layout";
 import { RoadmapNode } from "@/core/entities/roadmap";
 
-// Daftarkan tipe node custom kita
+// FIX: Move nodeTypes outside component for stable reference
+// This prevents re-registration on every render
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
+};
+
+// FIX: Move default edge options outside for stable reference
+const defaultEdgeOptions = {
+  style: { stroke: "#e5e5e5", strokeWidth: 2 },
+  animated: false,
 };
 
 interface RoadmapGraphProps {
@@ -28,66 +35,74 @@ interface RoadmapGraphProps {
   onNodeClick: (nodeId: string) => void;
 }
 
-// Tipe data internal node (harus match dengan CustomNode.tsx)
+// Type for custom node data
 type CustomNodeData = {
   status: string;
-  [key: string]: unknown;
+  label?: string;
+  description?: string;
+  difficulty?: string;
+  estimatedTime?: string;
 };
 
-export default function RoadmapGraph({
-  nodes,
-  onNodeClick,
-}: RoadmapGraphProps) {
-  // Hitung layout awal
-  const { reactFlowNodes, reactFlowEdges } = useMemo(
-    () => getGraphLayout(nodes, onNodeClick),
-    [nodes, onNodeClick],
-  );
+/**
+ * RoadmapGraph Component
+ * Renders interactive learning roadmap with ReactFlow
+ */
+function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
+  // FIX: Memoize graph layout with stable dependencies
+  // Only recompute when nodes array reference changes
+  const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
+    console.log("🔄 Recalculating graph layout", {
+      nodeCount: nodes.length,
+    });
+
+    return getGraphLayout(nodes);
+  }, [nodes]); // Only depend on nodes array
 
   // React Flow state hooks
-  // Kita menggunakan generics <Node> dan <Edge> untuk memastikan tipe data valid
   const [rfNodes, , onNodesChange] = useNodesState<Node>(reactFlowNodes);
   const [rfEdges, , onEdgesChange] = useEdgesState<Edge>(reactFlowEdges);
 
-  // Handle klik pada node (Strict Typing)
+  // FIX: Memoize node click handler with stable reference
+  // This prevents graph re-renders when parent re-renders
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      // Casting data ke tipe spesifik kita untuk akses properti status
       const nodeData = node.data as CustomNodeData;
 
-      // Jika status locked, jangan lakukan apa-apa
-      if (nodeData.status === "locked") return;
+      // Prevent interaction with locked nodes
+      if (nodeData.status === "locked") {
+        console.log("🔒 Node is locked:", node.id);
+        return;
+      }
 
+      console.log("✅ Node clicked:", node.id, nodeData.label);
       onNodeClick(node.id);
     },
-    [onNodeClick],
+    [onNodeClick]
+  );
+
+  // FIX: Memoize ReactFlow props for performance
+  const reactFlowProps = useMemo(
+    () => ({
+      nodes: rfNodes,
+      edges: rfEdges,
+      onNodesChange,
+      onEdgesChange,
+      onNodeClick: handleNodeClick,
+      nodeTypes,
+      fitView: true,
+      minZoom: 0.5,
+      maxZoom: 1.5,
+      attributionPosition: "bottom-right" as const,
+      defaultEdgeOptions,
+    }),
+    [rfNodes, rfEdges, onNodesChange, onEdgesChange, handleNodeClick]
   );
 
   return (
-    // Container: Full White, No Borders (Infinity Canvas Feel)
     <div className="w-full h-full min-h-[600px] bg-white">
-      <ReactFlow
-        nodes={rfNodes}
-        edges={rfEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        nodeTypes={nodeTypes}
-        fitView
-        minZoom={0.5}
-        maxZoom={1.5}
-        attributionPosition="bottom-right"
-        // Default styling untuk edge (kabel penghubung)
-        defaultEdgeOptions={{
-          style: { stroke: "#e5e5e5", strokeWidth: 2 }, // Abu-abu halus default
-          animated: false,
-        }}
-      >
-        {/* 
-            Aura Background:
-            Titik hitam (black) dengan opasitas 5% di atas latar putih.
-            Memberikan tekstur kertas/editorial.
-        */}
+      <ReactFlow {...reactFlowProps}>
+        {/* Background Pattern */}
         <Background
           color="#000000"
           gap={24}
@@ -96,11 +111,7 @@ export default function RoadmapGraph({
           style={{ opacity: 0.05 }}
         />
 
-        {/* 
-            Aura Controls:
-            Tombol minimalis di pojok kiri bawah.
-            Override class default ReactFlow agar sesuai tema.
-        */}
+        {/* Controls */}
         <Controls
           position="bottom-left"
           showInteractive={false}
@@ -110,3 +121,24 @@ export default function RoadmapGraph({
     </div>
   );
 }
+
+// FIX: Memoize entire component to prevent unnecessary re-renders
+// Only re-render when nodes or onNodeClick actually change
+export default memo(RoadmapGraph, (prevProps, nextProps) => {
+  // Custom comparison function
+  const nodesEqual =
+    prevProps.nodes.length === nextProps.nodes.length &&
+    prevProps.nodes.every((node, idx) => {
+      const nextNode = nextProps.nodes[idx];
+      return (
+        node.id === nextNode.id &&
+        node.status === nextNode.status &&
+        node.label === nextNode.label
+      );
+    });
+
+  const callbackEqual = prevProps.onNodeClick === nextProps.onNodeClick;
+
+  // Return true to skip re-render
+  return nodesEqual && callbackEqual;
+});

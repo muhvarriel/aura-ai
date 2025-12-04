@@ -1,25 +1,55 @@
-// Tipe status node untuk gamifikasi sederhana
+/**
+ * Core Domain Entities for Roadmap
+ * Strict null safety and readonly properties where applicable
+ */
+
+// Node status type - explicit union for type safety
 export type NodeStatus = "locked" | "unlocked" | "completed";
 
-// Struktur data untuk satu titik materi (Node)
-export interface RoadmapNode {
-  id: string;
-  label: string; // Judul singkat yang muncul di bulatan graph
-  description: string; // Deskripsi singkat 1-2 kalimat
-  status: NodeStatus;
-  parentId?: string; // Untuk mengetahui node ini cabang dari mana
-  childrenIds: string[]; // Untuk rendering garis konektor (Edges)
+// Difficulty levels - explicit union
+export type DifficultyLevel = "Beginner" | "Intermediate" | "Advanced";
 
-  // Metadata tambahan untuk AI context
-  estimatedTime?: string; // misal: "15 menit"
-  difficulty?: "Beginner" | "Intermediate" | "Advanced";
+/**
+ * Represents a single learning module/topic in the roadmap
+ */
+export interface RoadmapNode {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  status: NodeStatus; // Mutable - changes during progress
+  readonly parentId?: string;
+  childrenIds: string[];
+  readonly estimatedTime?: string;
+  readonly difficulty?: DifficultyLevel;
 }
 
-// Struktur data utama Roadmap
+/**
+ * Represents a complete learning roadmap
+ */
 export interface Roadmap {
-  id: string; // Unique ID (UUID)
-  topic: string; // Input user, misal: "Belajar Docker"
-  nodes: RoadmapNode[]; // Array flat dari semua node
-  createdAt: number; // Timestamp
-  progress: number; // Persentase 0-100
+  readonly id: string;
+  readonly topic: string;
+  nodes: RoadmapNode[]; // Mutable - status updates
+  readonly createdAt: number;
+  progress: number; // Mutable - calculated field
+}
+
+/**
+ * Type guard: Check if value is valid NodeStatus
+ */
+export function isNodeStatus(value: unknown): value is NodeStatus {
+  return (
+    typeof value === "string" &&
+    (value === "locked" || value === "unlocked" || value === "completed")
+  );
+}
+
+/**
+ * Type guard: Check if value is valid DifficultyLevel
+ */
+export function isDifficultyLevel(value: unknown): value is DifficultyLevel {
+  return (
+    typeof value === "string" &&
+    (value === "Beginner" || value === "Intermediate" || value === "Advanced")
+  );
 }

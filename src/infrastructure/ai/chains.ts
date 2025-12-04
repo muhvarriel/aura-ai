@@ -2,14 +2,21 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnableSequence } from "@langchain/core/runnables";
+import { z } from "zod";
 
 import { AI_CONFIG } from "@/core/constants/ai-config";
 import {
   SYLLABUS_PROMPT,
   CONTENT_GENERATION_PROMPT,
 } from "@/core/constants/prompts";
-import { SyllabusResponse, ContentGenerationResponse } from "./schemas";
+import {
+  SyllabusResponse,
+  SyllabusResponseSchema,
+  ContentGenerationResponse,
+  ContentGenerationSchema,
+} from "./schemas";
 
+// Initialize Groq Model
 const model = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
   model: AI_CONFIG.MODEL_NAME,
@@ -17,157 +24,91 @@ const model = new ChatGroq({
 });
 
 /**
- * Helper: Membersihkan string JSON yang kotor dari LLM
+ * Extract JSON from AI response (handles markdown code blocks)
+ * Simplified - hanya handle common case tanpa over-engineering
  */
-function parseAIJSON<T>(rawText: string, requiredKey: string): T {
-  console.log(
-    "🕵️ Raw AI Output Preview:",
-    rawText.substring(0, 100).replace(/\n/g, "\\n") + "...",
-  );
-
-  let candidates: string[] = [];
-
-  // STRATEGI 1: Cari blok Markdown
-  const jsonBlocks = rawText.match(/``````/g);
-  if (jsonBlocks) {
-    candidates = jsonBlocks.map((block) => block.replace(/``````/g, "").trim());
+function extractJSON(rawText: string): string {
+  // Remove markdown code blocks if present
+  const codeBlockMatch = rawText.match(/``````/);
+  if (codeBlockMatch) {
+    return codeBlockMatch[1].trim();
   }
 
-  // STRATEGI 2: Cari blok { ... } terbesar (Paling sering berhasil)
+  // Try to find JSON object boundaries
   const firstBrace = rawText.indexOf("{");
   const lastBrace = rawText.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    candidates.push(rawText.substring(firstBrace, lastBrace + 1));
+
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return rawText.substring(firstBrace, lastBrace + 1);
   }
 
-  // STRATEGI 3: Raw text
-  if (candidates.length === 0) {
-    candidates.push(rawText.trim());
-  }
+  // Return as-is if no special formatting detected
+  return rawText.trim();
+}
 
-  // Iterasi kandidat
-  for (const jsonStr of candidates) {
-    // A. COBA PARSE MURNI (Best Case)
-    try {
-      const parsed = JSON.parse(jsonStr);
-      if (isValidData(parsed, requiredKey)) return parsed as T;
-    } catch (e) {
-      /* Lanjut */
-    }
-
-    // B. COBA SANITASI NEWLINE (Common Case)
-    try {
-      // Ganti newline literal yang tidak ter-escape
-      // Hati-hati regex ini: mencari \n yang tidak didahului backslash
-      const sanitized = jsonStr.replace(/(?<!\\)\n/g, "\\n");
-      const parsed = JSON.parse(sanitized);
-      if (isValidData(parsed, requiredKey)) return parsed as T;
-    } catch (e) {
-      /* Lanjut */
-    }
-
-    // C. COBA HAPUS CONTROL CHARS (Last Resort JSON Parse)
-    try {
-      // Hapus semua control characters kecuali newline biasa
-      const sanitized = jsonStr.replace(/[\u0000-\u001F]+/g, "");
-      const parsed = JSON.parse(sanitized);
-      if (isValidData(parsed, requiredKey)) return parsed as T;
-    } catch (e) {
-      /* Lanjut */
-    }
-  }
-
-  // STRATEGI 4: MANUAL REGEX EXTRACTION (FALLBACK KHUSUS)
-  // Jika semua JSON.parse gagal, kita coba ambil propertinya manual.
-  // Ini berlaku baik untuk 'modules' (Syllabus) maupun 'markdownContent' (Content).
-
+/**
+ * Parse and validate AI JSON response using Zod schema
+ * SIMPLIFIED: No more 4 strategies, direct Zod validation
+ */
+function parseAndValidate<T>(
+  rawText: string,
+  schema: z.ZodSchema<T>,
+  context: string
+): T {
   console.log(
-    "⚠️ All JSON.parse failed. Attempting Regex Extraction for:",
-    requiredKey,
+    `🔍 [${context}] Raw AI Output Preview:`,
+    rawText.substring(0, 150).replace(/\n/g, "\\n") + "..."
   );
 
   try {
-    if (requiredKey === "markdownContent") {
-      // Ekstraksi Content manual seperti sebelumnya
-      const titleMatch = rawText.match(/"title"\s*:\s*"([^"]+)"/);
-      const contentMatch = rawText.match(
-        /"markdownContent"\s*:\s*"([\s\S]*?)(?<!\\)"\s*,/,
-      ); // Lookbehind
-      const title = titleMatch ? titleMatch[1] : "Materi Pembelajaran";
-      const content = contentMatch
-        ? contentMatch[1]
-        : rawText.includes("markdownContent")
-          ? "Konten ada tapi gagal diparse."
-          : "Gagal memuat teks.";
+    // Step 1: Extract JSON from potential markdown formatting
+    const jsonString = extractJSON(rawText);
 
-      // Ekstrak Quiz Array secara kasar
-      let quizzes = [];
-      const quizMatch = rawText.match(/"quiz"\s*:\s*(\[[\s\S]*?\])/); // Ambil [ ... ]
-      if (quizMatch) {
-        try {
-          quizzes = JSON.parse(quizMatch[1]);
-        } catch (e) {}
-      }
+    // Step 2: Parse JSON
+    const parsed: unknown = JSON.parse(jsonString);
 
-      return {
-        title,
-        markdownContent: content.replace(/\\n/g, "\n").replace(/\\"/g, '"'),
-        quiz: quizzes,
-      } as unknown as T;
+    // Step 3: Validate with Zod schema
+    const validated = schema.safeParse(parsed);
+
+    if (!validated.success) {
+      // Detailed error logging
+      console.error(`❌ [${context}] Zod Validation Failed:`, {
+        errors: validated.error.format(),
+        receivedData: parsed,
+      });
+
+      throw new Error(
+        `Invalid AI response structure: ${validated.error.issues
+          .map((e) => `${e.path.join(".")} - ${e.message}`)
+          .join(", ")}`
+      );
     }
 
-    if (requiredKey === "modules") {
-      // Ekstraksi Syllabus manual
-      const titleMatch = rawText.match(/"courseTitle"\s*:\s*"([^"]+)"/);
-      const overviewMatch = rawText.match(/"overview"\s*:\s*"([^"]+)"/);
-      // Ekstrak array modules agak susah pakai regex murni karena nested object
-      // Tapi kita coba ambil blok [ ... ] untuk modules
-      const modulesMatch = rawText.match(/"modules"\s*:\s*(\[[\s\S]*?\])/);
-
-      if (modulesMatch) {
-        const modulesJson = modulesMatch[1];
-        // Coba parse array-nya saja (biasanya array modules valid JSON meski parent object rusak)
-        const modules = JSON.parse(modulesJson);
-        return {
-          courseTitle: titleMatch ? titleMatch[1] : "Untitled Course",
-          overview: overviewMatch ? overviewMatch[1] : "",
-          modules: modules,
-        } as unknown as T;
-      }
+    console.log(`✅ [${context}] Successfully validated response`);
+    return validated.data;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      console.error(`❌ [${context}] JSON Parse Error:`, error.message);
+      console.error("Raw text that failed:", rawText.substring(0, 300));
+      throw new Error(
+        `AI returned invalid JSON format. Please try again. Error: ${error.message}`
+      );
     }
-  } catch (e) {
-    console.error("Regex extraction failed:", e);
-  }
 
-  throw new Error(
-    `Gagal menemukan JSON valid yang mengandung key: '${requiredKey}'. Output AI mungkin rusak.`,
-  );
+    // Re-throw validation errors
+    throw error;
+  }
 }
 
-function isValidData(parsed: any, requiredKey: string): boolean {
-  if (!parsed) return false;
-  // Skip Schema definitions
-  if (
-    parsed["$schema"] ||
-    (parsed["type"] === "object" && parsed["properties"])
-  )
-    return false;
-
-  if (requiredKey === "modules") {
-    return Array.isArray(parsed.modules);
-  }
-  if (requiredKey === "markdownContent") {
-    return typeof parsed.markdownContent === "string";
-  }
-  return !!parsed[requiredKey];
-}
-
-// ... COPY PASTE EXPORT FUNCTION DI BAWAH INI AGAR LENGKAP ...
-
+/**
+ * Generate roadmap syllabus from topic
+ */
 export const generateSyllabusChain = async (
-  topic: string,
+  topic: string
 ): Promise<SyllabusResponse> => {
-  console.log(`🚀 Generating Syllabus for: ${topic}`);
+  const startTime = Date.now();
+  console.log(`🚀 [Syllabus] Generating for topic: "${topic}"`);
+
   const parser = new StringOutputParser();
   const chain = RunnableSequence.from([
     ChatPromptTemplate.fromTemplate(SYLLABUS_PROMPT),
@@ -176,25 +117,60 @@ export const generateSyllabusChain = async (
   ]);
 
   try {
-    const simpleInstructions = `Berikan output HANYA dalam format JSON valid. 
-    JSON harus memiliki properti: "courseTitle", "overview", dan "modules" (array of objects).`;
+    // Simplified format instructions
+    const formatInstructions = `Return ONLY valid JSON with this structure:
+{
+  "courseTitle": "string",
+  "overview": "string", 
+  "modules": [
+    {
+      "title": "string",
+      "description": "string",
+      "difficulty": "Beginner" | "Intermediate" | "Advanced",
+      "estimatedTime": "string",
+      "subTopics": ["string"]
+    }
+  ]
+}`;
 
     const rawResponse = await chain.invoke({
-      topic: topic,
-      format_instructions: simpleInstructions,
+      topic,
+      format_instructions: formatInstructions,
     });
-    return parseAIJSON<SyllabusResponse>(rawResponse, "modules");
+
+    const result = parseAndValidate(
+      rawResponse,
+      SyllabusResponseSchema,
+      "Syllabus Generation"
+    );
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `✅ [Syllabus] Generated successfully in ${duration}ms. Modules: ${result.modules.length}`
+    );
+
+    return result;
   } catch (error) {
-    console.error("❌ Error generating syllabus:", error);
+    console.error("❌ [Syllabus] Generation failed:", error);
+
+    if (error instanceof Error) {
+      throw new Error(`Syllabus generation failed: ${error.message}`);
+    }
+
     throw new Error("Gagal memproses respons AI. Silakan coba lagi.");
   }
 };
 
+/**
+ * Generate learning content and quiz for a module
+ */
 export const generateLearningContentChain = async (
   topic: string,
-  moduleTitle: string,
+  moduleTitle: string
 ): Promise<ContentGenerationResponse> => {
-  console.log(`📝 Generating Content for: ${moduleTitle}`);
+  const startTime = Date.now();
+  console.log(`📝 [Content] Generating for module: "${moduleTitle}"`);
+
   const parser = new StringOutputParser();
   const chain = RunnableSequence.from([
     ChatPromptTemplate.fromTemplate(CONTENT_GENERATION_PROMPT),
@@ -203,20 +179,46 @@ export const generateLearningContentChain = async (
   ]);
 
   try {
-    const simpleInstructions = `Berikan output HANYA dalam format JSON valid.
-    JSON harus memiliki properti: "title", "markdownContent", dan "quiz" (array of objects).`;
+    const formatInstructions = `Return ONLY valid JSON with this structure:
+{
+  "title": "string",
+  "markdownContent": "string (markdown formatted)",
+  "quiz": [
+    {
+      "question": "string",
+      "options": [
+        { "id": "string", "text": "string", "isCorrect": boolean }
+      ],
+      "explanation": "string"
+    }
+  ]
+}`;
 
     const rawResponse = await chain.invoke({
-      topic: topic,
-      moduleTitle: moduleTitle,
-      format_instructions: simpleInstructions,
+      topic,
+      moduleTitle,
+      format_instructions: formatInstructions,
     });
-    return parseAIJSON<ContentGenerationResponse>(
+
+    const result = parseAndValidate(
       rawResponse,
-      "markdownContent",
+      ContentGenerationSchema,
+      "Content Generation"
     );
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `✅ [Content] Generated successfully in ${duration}ms. Quiz questions: ${result.quiz.length}`
+    );
+
+    return result;
   } catch (error) {
-    console.error("❌ Error generating content:", error);
-    throw new Error("Gagal memuat materi pelajaran.");
+    console.error("❌ [Content] Generation failed:", error);
+
+    if (error instanceof Error) {
+      throw new Error(`Content generation failed: ${error.message}`);
+    }
+
+    throw new Error("Gagal memuat materi pelajaran. Silakan coba lagi.");
   }
 };

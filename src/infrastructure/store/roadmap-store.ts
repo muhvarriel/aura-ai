@@ -7,7 +7,8 @@ import { LearningContent } from "@/core/entities/quiz";
 interface RoadmapState {
   roadmaps: Roadmap[];
   activeRoadmapId: string | null;
-  contentCache: Record<string, LearningContent>; // Key: nodeId, Value: Content
+  contentCache: Record<string, LearningContent>;
+  _hasHydrated: boolean; // NEW: Track hydration status
 }
 
 // Interface Actions (Function)
@@ -29,6 +30,9 @@ interface RoadmapActions {
   // Content Caching
   cacheContent: (nodeId: string, content: LearningContent) => void;
   getContent: (nodeId: string) => LearningContent | undefined;
+
+  // NEW: Hydration Control
+  setHasHydrated: (state: boolean) => void;
 }
 
 // Gabungan State + Actions
@@ -41,12 +45,13 @@ export const useRoadmapStore = create<RoadmapStore>()(
       roadmaps: [],
       activeRoadmapId: null,
       contentCache: {},
+      _hasHydrated: false, // NEW: Initial false
 
       // Actions Implementation
       addRoadmap: (roadmap) =>
         set((state) => ({
           roadmaps: [roadmap, ...state.roadmaps],
-          activeRoadmapId: roadmap.id, // Auto set active ke yang baru dibuat
+          activeRoadmapId: roadmap.id,
         })),
 
       setActiveRoadmap: (id) => set({ activeRoadmapId: id }),
@@ -91,7 +96,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
         const currentNode = roadmap.nodes.find((n) => n.id === currentNodeId);
         if (!currentNode) return;
 
-        // Temukan anak-anak dari node ini
         const childrenIds = currentNode.childrenIds;
 
         set((state) => ({
@@ -99,9 +103,11 @@ export const useRoadmapStore = create<RoadmapStore>()(
             if (map.id !== roadmapId) return map;
 
             const updatedNodes = map.nodes.map((node) => {
-              // Jika node ini adalah anak dari node yang baru selesai, unlock!
               if (childrenIds.includes(node.id) && node.status === "locked") {
-                return { ...node, status: "unlocked" as NodeStatus };
+                return {
+                  ...node,
+                  status: "unlocked" as NodeStatus,
+                };
               }
               return node;
             });
@@ -119,11 +125,42 @@ export const useRoadmapStore = create<RoadmapStore>()(
       getContent: (nodeId) => {
         return get().contentCache[nodeId];
       },
+
+      // NEW: Manual hydration setter
+      setHasHydrated: (state) => {
+        set({
+          _hasHydrated: state,
+        });
+      },
     }),
     {
-      name: "aura-ai-storage", // Nama key di LocalStorage
-      storage: createJSONStorage(() => localStorage), // Explicit browser storage
-      skipHydration: true, // Penting untuk Next.js SSR agar tidak hydration mismatch
+      name: "aura-ai-storage",
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true, // Keep true to prevent SSR issues
+
+      // NEW: onRehydrateStorage callback
+      onRehydrateStorage: () => (state) => {
+        // This callback runs after store rehydrates from localStorage
+        if (state) {
+          state.setHasHydrated(true);
+        }
+      },
     }
   )
 );
+
+// NEW: Optimized Selectors (Prevent unnecessary re-renders)
+// Export these for use in components instead of inline selectors
+export const selectRoadmapById = (id: string) => (state: RoadmapStore) =>
+  state.roadmaps.find((r) => r.id === id);
+
+export const selectHasHydrated = (state: RoadmapStore) => state._hasHydrated;
+
+export const selectUnlockNext = (state: RoadmapStore) => state.unlockNextNode;
+
+export const selectUpdateStatus = (state: RoadmapStore) =>
+  state.updateNodeStatus;
+
+export const selectCacheContent = (state: RoadmapStore) => state.cacheContent;
+
+export const selectGetContent = (state: RoadmapStore) => state.getContent;
