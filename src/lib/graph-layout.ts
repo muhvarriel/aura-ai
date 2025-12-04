@@ -3,8 +3,9 @@ import { RoadmapNode, NodeStatus } from "@/core/entities/roadmap";
 
 // --- LAYOUT CONSTANTS ---
 const NODE_WIDTH = 250;
-const X_GAP = 50;
-const Y_GAP = 150;
+const X_GAP = 120; // ✅ CHANGED: Increased from 50 to 120 for more spacing
+const Y_GAP = 200; // ✅ CHANGED: Increased from 150 to 200 for more vertical space
+const HORIZONTAL_STAGGER = 40; // ✅ NEW: Add slight offset for visual variety
 
 // --- TYPE DEFINITIONS ---
 interface NodeLevel {
@@ -18,6 +19,12 @@ interface LayoutResult {
 }
 
 interface NodePosition {
+  x: number;
+  y: number;
+}
+
+// ✅ NEW: Custom position override type
+export interface CustomNodePosition {
   x: number;
   y: number;
 }
@@ -120,8 +127,7 @@ function calculateNodeLevels(nodes: RoadmapNode[]): {
 }
 
 /**
- * Calculate node position based on level and index
- * Optimized: Centered alignment for better visual balance
+ * ✅ UPDATED: Calculate node position with natural stagger effect
  */
 function calculateNodePosition(
   level: number,
@@ -132,9 +138,17 @@ function calculateNodePosition(
   const totalWidth = totalInLevel * (NODE_WIDTH + X_GAP);
   const startX = -(totalWidth / 2);
 
+  // ✅ NEW: Add subtle horizontal stagger for more organic look
+  const staggerOffset =
+    indexInLevel % 2 === 0 ? HORIZONTAL_STAGGER : -HORIZONTAL_STAGGER / 2;
+
   return {
-    x: startX + indexInLevel * (NODE_WIDTH + X_GAP) + NODE_WIDTH / 2,
-    y: level * Y_GAP + 50,
+    x:
+      startX +
+      indexInLevel * (NODE_WIDTH + X_GAP) +
+      NODE_WIDTH / 2 +
+      staggerOffset,
+    y: level * Y_GAP + 100, // ✅ CHANGED: Increased top padding from 50 to 100
   };
 }
 
@@ -170,13 +184,13 @@ function createEdges(nodes: RoadmapNode[]): Edge[] {
 }
 
 /**
- * Create ReactFlow nodes with calculated positions
- * Optimized: Pre-calculated positions, single pass
+ * ✅ UPDATED: Create ReactFlow nodes with calculated positions and custom overrides
  */
 function createNodes(
   nodes: RoadmapNode[],
   nodeLevels: Map<string, number>,
   levelCounts: Map<number, number>,
+  customPositions?: Record<string, CustomNodePosition>,
 ): Node<GraphNodeData>[] {
   const reactFlowNodes: Node<GraphNodeData>[] = [];
   const currentLevelCount = new Map<number, number>();
@@ -187,11 +201,14 @@ function createNodes(
     currentLevelCount.set(level, indexInLevel + 1);
 
     const totalInThisLevel = levelCounts.get(level) ?? 1;
-    const position = calculateNodePosition(
+    const defaultPosition = calculateNodePosition(
       level,
       indexInLevel,
       totalInThisLevel,
     );
+
+    // ✅ NEW: Use custom position if available, otherwise use calculated
+    const position = customPositions?.[node.id] ?? defaultPosition;
 
     reactFlowNodes.push({
       id: node.id,
@@ -204,8 +221,8 @@ function createNodes(
         difficulty: node.difficulty,
         estimatedTime: node.estimatedTime,
       },
-      // Prevent dragging for cleaner UX
-      draggable: false,
+      // ✅ CHANGED: Enable dragging
+      draggable: true,
     });
   });
 
@@ -213,19 +230,19 @@ function createNodes(
 }
 
 /**
- * Main function: Convert RoadmapNode[] to ReactFlow graph layout
+ * ✅ UPDATED: Main function with custom position support
  *
- * Algorithm: Vertical Tree Layout with BFS
+ * Algorithm: Vertical Tree Layout with BFS + Custom Position Override
  * Time Complexity: O(n) where n = number of nodes
  * Space Complexity: O(n)
  *
- * Optimizations:
- * - Single-pass BFS for level calculation
- * - Pre-calculated positions
- * - Map-based lookups (O(1) access)
- * - No callback injection (stable reference)
+ * @param nodes - Array of roadmap nodes
+ * @param customPositions - Optional custom positions from user drag-drop
  */
-export function getGraphLayout(nodes: RoadmapNode[]): LayoutResult {
+export function getGraphLayout(
+  nodes: RoadmapNode[],
+  customPositions?: Record<string, CustomNodePosition>,
+): LayoutResult {
   // Early return for empty input
   if (nodes.length === 0) {
     return {
@@ -241,8 +258,13 @@ export function getGraphLayout(nodes: RoadmapNode[]): LayoutResult {
   // Calculate levels using BFS
   const { nodeLevels, levelCounts } = calculateNodeLevels(nodes);
 
-  // Create ReactFlow nodes with positions
-  const reactFlowNodes = createNodes(nodes, nodeLevels, levelCounts);
+  // ✅ CHANGED: Pass customPositions to createNodes
+  const reactFlowNodes = createNodes(
+    nodes,
+    nodeLevels,
+    levelCounts,
+    customPositions,
+  );
 
   // Create ReactFlow edges
   const reactFlowEdges = createEdges(nodes);

@@ -23,10 +23,11 @@ import "@xyflow/react/dist/style.css";
 import CustomNode from "./CustomNode";
 import { getGraphLayout } from "@/lib/graph-layout";
 import { RoadmapNode, NodeStatus } from "@/core/entities/roadmap";
+import { useRoadmapStore } from "@/infrastructure/store/roadmap-store"; // ✅ NEW: Import store
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * ROADMAP GRAPH - ENHANCED VERSION
+ * ROADMAP GRAPH - ENHANCED VERSION WITH DRAG-DROP
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -37,6 +38,7 @@ const nodeTypes: NodeTypes = {
 interface RoadmapGraphProps {
   nodes: RoadmapNode[];
   onNodeClick: (nodeId: string) => void;
+  roadmapId: string; // ✅ NEW: Need roadmapId for position management
 }
 
 type CustomNodeData = {
@@ -243,17 +245,69 @@ const StatsPanel: React.FC<{
 };
 
 /**
- * RoadmapGraph Component
+ * ✅ NEW: Reset Layout Button Component
  */
-function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
+const ResetLayoutButton: React.FC<{
+  onReset: () => void;
+}> = ({ onReset }) => {
+  return (
+    <Panel position="top-left" className="m-6 pl-16">
+      <motion.button
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onReset}
+        className="bg-white/90 backdrop-blur-md border border-neutral-200 rounded-xl px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-black"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+          <path d="M3 21v-5h5" />
+        </svg>
+        Reset Layout
+      </motion.button>
+    </Panel>
+  );
+};
+
+/**
+ * ✅ UPDATED: RoadmapGraph Component with Drag-Drop Support
+ */
+function RoadmapGraph({ nodes, onNodeClick, roadmapId }: RoadmapGraphProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
 
+  // ✅ NEW: Get position management functions from store
+  const saveNodePosition = useRoadmapStore((state) => state.saveNodePosition);
+  const getNodePositions = useRoadmapStore((state) => state.getNodePositions);
+  const resetNodePositions = useRoadmapStore(
+    (state) => state.resetNodePositions,
+  );
+
+  // ✅ NEW: Get custom positions from store
+  const customPositions = useMemo(() => {
+    return getNodePositions(roadmapId);
+  }, [roadmapId, getNodePositions]);
+
+  // ✅ UPDATED: Pass custom positions to layout calculation
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
     console.log("🔄 Recalculating graph layout", {
       nodeCount: nodes.length,
+      hasCustomPositions: !!customPositions,
     });
 
-    const layout = getGraphLayout(nodes);
+    const layout = getGraphLayout(nodes, customPositions);
 
     const enhancedEdges = layout.reactFlowEdges.map((edge) => {
       const sourceNode = nodes.find((n) => n.id === edge.source);
@@ -273,9 +327,10 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
       reactFlowNodes: layout.reactFlowNodes,
       reactFlowEdges: enhancedEdges,
     };
-  }, [nodes]);
+  }, [nodes, customPositions]);
 
-  const [rfNodes, , onNodesChange] = useNodesState<Node>(reactFlowNodes);
+  const [rfNodes, setNodes, onNodesChange] =
+    useNodesState<Node>(reactFlowNodes);
   const [rfEdges, , onEdgesChange] = useEdgesState<Edge>(reactFlowEdges);
 
   const stats = useMemo(() => {
@@ -285,7 +340,7 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
     return { total, completed, unlocked };
   }, [nodes]);
 
-  // FIX: Enhanced node click handler with better logging
+  // Enhanced node click handler with better logging
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
       const nodeData = node.data as CustomNodeData;
@@ -307,6 +362,32 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
     [onNodeClick],
   );
 
+  // ✅ NEW: Handle node drag stop - save position
+  const handleNodeDragStop = useCallback(
+    (event: React.MouseEvent | React.TouchEvent, node: Node) => {
+      console.log(`[RoadmapGraph] Node dragged:`, {
+        id: node.id,
+        position: node.position,
+      });
+
+      saveNodePosition(roadmapId, node.id, {
+        x: node.position.x,
+        y: node.position.y,
+      });
+    },
+    [roadmapId, saveNodePosition],
+  );
+
+  // ✅ NEW: Handle reset layout
+  const handleResetLayout = useCallback(() => {
+    console.log("[RoadmapGraph] Resetting layout to default");
+    resetNodePositions(roadmapId);
+
+    // Recalculate default positions
+    const defaultLayout = getGraphLayout(nodes);
+    setNodes(defaultLayout.reactFlowNodes);
+  }, [roadmapId, resetNodePositions, nodes, setNodes]);
+
   const handleMoveEnd: OnMove = useCallback((event, viewport) => {
     setZoomLevel(viewport.zoom);
   }, []);
@@ -318,6 +399,7 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
       onNodesChange,
       onEdgesChange,
       onNodeClick: handleNodeClick,
+      onNodeDragStop: handleNodeDragStop, // ✅ NEW: Add drag handler
       onMoveEnd: handleMoveEnd,
       nodeTypes,
       edgeTypes,
@@ -341,6 +423,10 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
       panOnScroll: false,
       panOnDrag: true,
       preventScrolling: true,
+      // ✅ NEW: Ensure nodes are draggable
+      nodesDraggable: true,
+      nodesConnectable: false, // Prevent edge creation
+      elementsSelectable: true,
     }),
     [
       rfNodes,
@@ -348,6 +434,7 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
       onNodesChange,
       onEdgesChange,
       handleNodeClick,
+      handleNodeDragStop,
       handleMoveEnd,
     ],
   );
@@ -362,6 +449,9 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
           completedNodes={stats.completed}
           unlockedNodes={stats.unlocked}
         />
+
+        {/* ✅ NEW: Reset Layout Button */}
+        <ResetLayoutButton onReset={handleResetLayout} />
 
         <Controls
           position="bottom-left"
@@ -393,10 +483,10 @@ function RoadmapGraph({ nodes, onNodeClick }: RoadmapGraphProps) {
           nodeBorderRadius={16}
         />
 
-        <Panel position="top-left" className="m-6 pl-16 pt-4">
+        <Panel position="bottom-left" className="ml-6 mb-24">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-mono shadow-lg"
           >
             Zoom: {Math.round(zoomLevel * 100)}%
@@ -420,6 +510,7 @@ export default memo(RoadmapGraph, (prevProps, nextProps) => {
     });
 
   const callbackEqual = prevProps.onNodeClick === nextProps.onNodeClick;
+  const roadmapIdEqual = prevProps.roadmapId === nextProps.roadmapId; // ✅ NEW: Check roadmapId
 
-  return nodesEqual && callbackEqual;
+  return nodesEqual && callbackEqual && roadmapIdEqual;
 });

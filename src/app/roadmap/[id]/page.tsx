@@ -347,6 +347,9 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   // Hydration tracking
   const hasHydrated = useRoadmapStore(selectHasHydrated);
 
+  const params = useParams();
+  const roadmapId = params.id as string;
+
   // Trigger rehydration
   useEffect(() => {
     const unsubHydrate = useRoadmapStore.persist.onFinishHydration(() => {
@@ -621,7 +624,11 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
         transition={{ delay: 0.3, duration: 0.8 }}
         className="flex-1 w-full h-full relative"
       >
-        <RoadmapGraph nodes={roadmap.nodes} onNodeClick={handleNodeClick} />
+        <RoadmapGraph
+          nodes={roadmap.nodes}
+          onNodeClick={handleNodeClick}
+          roadmapId={roadmapId}
+        />
       </motion.div>
 
       {/* Learning Drawer */}

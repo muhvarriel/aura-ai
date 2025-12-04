@@ -2,12 +2,19 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Roadmap, NodeStatus } from "@/core/entities/roadmap";
 import { LearningContent } from "@/core/entities/quiz";
+import { CustomNodePosition } from "@/lib/graph-layout"; // ✅ NEW: Import type
+
+// ✅ NEW: Custom positions type for each roadmap
+interface RoadmapCustomPositions {
+  [roadmapId: string]: Record<string, CustomNodePosition>;
+}
 
 // Interface State (Data)
 interface RoadmapState {
   roadmaps: Roadmap[];
   activeRoadmapId: string | null;
   contentCache: Record<string, LearningContent>;
+  customPositions: RoadmapCustomPositions; // ✅ NEW: Store custom node positions
   _hasHydrated: boolean;
 }
 
@@ -26,14 +33,23 @@ interface RoadmapActions {
     status: NodeStatus,
   ) => void;
   unlockNextNode: (roadmapId: string, currentNodeId: string) => void;
-
-  // FIX: New combined method for completing node and unlocking next
   completeNode: (roadmapId: string, nodeId: string) => void;
+
+  // ✅ NEW: Node Position Management
+  saveNodePosition: (
+    roadmapId: string,
+    nodeId: string,
+    position: CustomNodePosition,
+  ) => void;
+  getNodePositions: (
+    roadmapId: string,
+  ) => Record<string, CustomNodePosition> | undefined;
+  resetNodePositions: (roadmapId: string) => void;
 
   // Content Caching
   cacheContent: (nodeId: string, content: LearningContent) => void;
   getContent: (nodeId: string) => LearningContent | undefined;
-  clearContentCache: () => void; // FIX: Add cache clearing
+  clearContentCache: () => void;
 
   // Hydration Control
   setHasHydrated: (state: boolean) => void;
@@ -49,6 +65,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
       roadmaps: [],
       activeRoadmapId: null,
       contentCache: {},
+      customPositions: {}, // ✅ NEW: Initialize empty custom positions
       _hasHydrated: false,
 
       // Actions Implementation
@@ -61,11 +78,18 @@ export const useRoadmapStore = create<RoadmapStore>()(
       setActiveRoadmap: (id) => set({ activeRoadmapId: id }),
 
       deleteRoadmap: (id) =>
-        set((state) => ({
-          roadmaps: state.roadmaps.filter((r) => r.id !== id),
-          activeRoadmapId:
-            state.activeRoadmapId === id ? null : state.activeRoadmapId,
-        })),
+        set((state) => {
+          // ✅ NEW: Also delete custom positions when deleting roadmap
+          const newCustomPositions = { ...state.customPositions };
+          delete newCustomPositions[id];
+
+          return {
+            roadmaps: state.roadmaps.filter((r) => r.id !== id),
+            activeRoadmapId:
+              state.activeRoadmapId === id ? null : state.activeRoadmapId,
+            customPositions: newCustomPositions,
+          };
+        }),
 
       getRoadmapById: (id) => {
         return get().roadmaps.find((r) => r.id === id);
@@ -124,7 +148,7 @@ export const useRoadmapStore = create<RoadmapStore>()(
             if (map.id !== roadmapId) return map;
 
             const updatedNodes = map.nodes.map((node) => {
-              // FIX: Only unlock if currently locked
+              // Only unlock if currently locked
               if (childrenIds.includes(node.id) && node.status === "locked") {
                 console.log(
                   `[Store] Unlocking child node: ${node.id} (${node.label})`,
@@ -142,7 +166,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
         }));
       },
 
-      // FIX: Combined method for completing node
       completeNode: (roadmapId, nodeId) => {
         console.log(
           `[Store] Completing node ${nodeId} in roadmap ${roadmapId}`,
@@ -153,6 +176,45 @@ export const useRoadmapStore = create<RoadmapStore>()(
 
         // Unlock next nodes
         get().unlockNextNode(roadmapId, nodeId);
+      },
+
+      // ✅ NEW: Save node position after drag
+      saveNodePosition: (roadmapId, nodeId, position) => {
+        console.log(
+          `[Store] Saving position for node ${nodeId} in roadmap ${roadmapId}:`,
+          position,
+        );
+
+        set((state) => ({
+          customPositions: {
+            ...state.customPositions,
+            [roadmapId]: {
+              ...(state.customPositions[roadmapId] || {}),
+              [nodeId]: position,
+            },
+          },
+        }));
+      },
+
+      // ✅ NEW: Get all custom positions for a roadmap
+      getNodePositions: (roadmapId) => {
+        return get().customPositions[roadmapId];
+      },
+
+      // ✅ NEW: Reset positions to default layout
+      resetNodePositions: (roadmapId) => {
+        console.log(
+          `[Store] Resetting node positions for roadmap ${roadmapId}`,
+        );
+
+        set((state) => {
+          const newCustomPositions = { ...state.customPositions };
+          delete newCustomPositions[roadmapId];
+
+          return {
+            customPositions: newCustomPositions,
+          };
+        });
       },
 
       cacheContent: (nodeId, content) => {
@@ -166,7 +228,6 @@ export const useRoadmapStore = create<RoadmapStore>()(
         return get().contentCache[nodeId];
       },
 
-      // FIX: Add cache clearing capability
       clearContentCache: () => {
         console.log("[Store] Clearing content cache");
         set({ contentCache: {} });
@@ -212,3 +273,13 @@ export const selectGetContent = (state: RoadmapStore) => state.getContent;
 
 export const selectClearCache = (state: RoadmapStore) =>
   state.clearContentCache;
+
+// ✅ NEW: Selectors for position management
+export const selectSaveNodePosition = (state: RoadmapStore) =>
+  state.saveNodePosition;
+
+export const selectGetNodePositions = (state: RoadmapStore) =>
+  state.getNodePositions;
+
+export const selectResetNodePositions = (state: RoadmapStore) =>
+  state.resetNodePositions;
