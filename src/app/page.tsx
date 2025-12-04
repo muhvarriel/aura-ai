@@ -1,8 +1,20 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import {
   Sparkles,
   ArrowRight,
@@ -11,6 +23,7 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
+  TrendingUp,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -20,11 +33,14 @@ import { SyllabusResponse } from "@/infrastructure/ai/schemas";
 
 // --- UI CONSTANTS ---
 const SUGGESTIONS = [
-  "React JS",
-  "Digital Marketing",
-  "Investasi Saham",
-  "Bahasa Jepang",
+  { label: "Artificial Intelligence" },
+  { label: "Web3 Development" },
+  { label: "Data Science" },
+  { label: "Cybersecurity" },
 ];
+
+// Floating particles configuration
+const PARTICLES_COUNT = 20;
 
 // --- TOAST NOTIFICATION TYPES ---
 type ToastType = "success" | "error" | "info";
@@ -36,16 +52,108 @@ interface Toast {
   description?: string;
 }
 
+// ✅ FIX: Seeded random for deterministic values (fixes hydration)
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
 /**
- * Toast Notification Component
+ * ✅ FIXED: Floating Particle Component (Deterministic)
  */
-const ToastNotification = ({
-  toast,
-  onClose,
-}: {
+const FloatingParticle: React.FC<{ index: number }> = ({ index }) => {
+  // ✅ FIX: Use index-based seeding for deterministic values
+  const randomX = useMemo(() => seededRandom(index * 100) * 100, [index]);
+  const randomDelay = useMemo(() => seededRandom(index * 200) * 2, [index]);
+  const randomDuration = useMemo(
+    () => 15 + seededRandom(index * 300) * 10,
+    [index],
+  );
+
+  return (
+    <motion.div
+      className="absolute w-1 h-1 bg-neutral-300 rounded-full"
+      style={{
+        left: `${randomX}%`,
+        bottom: "-10px",
+      }}
+      animate={{
+        y: [0, -1000],
+        opacity: [0, 0.5, 0],
+        scale: [1, 1.5, 1],
+      }}
+      transition={{
+        duration: randomDuration,
+        repeat: Infinity,
+        delay: randomDelay,
+        ease: "linear",
+      }}
+    />
+  );
+};
+
+/**
+ * Animated Background Grid
+ */
+const AnimatedBackground: React.FC = () => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  // ✅ FIX: Use useLayoutEffect or conditional rendering without setState in effect
+  useEffect(() => {
+    // Use requestAnimationFrame to defer the state update
+    const timer = requestAnimationFrame(() => {
+      setIsMounted(true);
+    });
+
+    return () => cancelAnimationFrame(timer);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Gradient Orbs */}
+      <motion.div
+        className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-neutral-100 to-transparent rounded-full blur-3xl opacity-50"
+        animate={{
+          scale: [1, 1.2, 1],
+          x: [0, 50, 0],
+          y: [0, -30, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-tl from-neutral-100 to-transparent rounded-full blur-3xl opacity-50"
+        animate={{
+          scale: [1, 1.3, 1],
+          x: [0, -50, 0],
+          y: [0, 30, 0],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* ✅ FIX: Conditionally render particles after mount */}
+      {isMounted &&
+        Array.from({ length: PARTICLES_COUNT }).map((_, i) => (
+          <FloatingParticle key={i} index={i} />
+        ))}
+    </div>
+  );
+};
+
+/**
+ * ✅ FIXED: Toast Notification Component with Enhanced Animations
+ */
+const ToastNotification: React.FC<{
   toast: Toast;
   onClose: () => void;
-}) => {
+}> = ({ toast, onClose }) => {
   const icons = {
     success: <CheckCircle2 size={20} className="text-green-600" />,
     error: <AlertCircle size={20} className="text-red-600" />,
@@ -60,27 +168,57 @@ const ToastNotification = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className={`${bgColors[toast.type]} border rounded-2xl p-4 shadow-lg max-w-md w-full`}
+      initial={{ opacity: 0, y: -20, scale: 0.95, x: 100 }}
+      animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
+      exit={{ opacity: 0, scale: 0.95, x: 100 }}
+      transition={{
+        type: "spring",
+        damping: 25,
+        stiffness: 300,
+      }}
+      className={`${bgColors[toast.type]} border rounded-2xl p-4 shadow-lg max-w-md w-full backdrop-blur-sm`}
     >
       <div className="flex items-start gap-3">
-        <div className="shrink-0 mt-0.5">{icons[toast.type]}</div>
+        <motion.div
+          className="shrink-0 mt-0.5"
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{
+            type: "spring",
+            delay: 0.1,
+            damping: 15,
+          }}
+        >
+          {icons[toast.type]}
+        </motion.div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-neutral-900">
+          <motion.p
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15 }}
+            className="font-medium text-sm text-neutral-900"
+          >
             {toast.message}
-          </p>
+          </motion.p>
           {toast.description && (
-            <p className="text-xs text-neutral-600 mt-1">{toast.description}</p>
+            <motion.p
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-xs text-neutral-600 mt-1"
+            >
+              {toast.description}
+            </motion.p>
           )}
         </div>
-        <button
+        <motion.button
           onClick={onClose}
+          whileHover={{ scale: 1.1, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
           className="shrink-0 p-1 hover:bg-black/5 rounded-full transition-colors"
         >
           <X size={16} className="text-neutral-500" />
-        </button>
+        </motion.button>
       </div>
     </motion.div>
   );
@@ -89,13 +227,10 @@ const ToastNotification = ({
 /**
  * Toast Container
  */
-const ToastContainer = ({
-  toasts,
-  onRemove,
-}: {
+const ToastContainer: React.FC<{
   toasts: Toast[];
   onRemove: (id: string) => void;
-}) => {
+}> = ({ toasts, onRemove }) => {
   return (
     <div className="fixed top-6 right-6 z-[100] flex flex-col gap-3">
       <AnimatePresence mode="popLayout">
@@ -112,13 +247,12 @@ const ToastContainer = ({
 };
 
 /**
- * ✅ NEW: Build edges array from parent-child relationships
+ * Build edges array from parent-child relationships
  */
 function buildEdgesFromNodes(nodes: RoadmapNode[]): RoadmapEdge[] {
   const edges: RoadmapEdge[] = [];
 
   nodes.forEach((node) => {
-    // If node has a parent, create an edge from parent to this node
     if (node.parentId) {
       edges.push({
         id: `${node.parentId}-${node.id}`,
@@ -135,6 +269,66 @@ function buildEdgesFromNodes(nodes: RoadmapNode[]): RoadmapEdge[] {
 }
 
 /**
+ * Magnetic Button Component
+ */
+const MagneticButton: React.FC<{
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  type?: "button" | "submit" | "reset";
+}> = ({
+  children,
+  onClick,
+  disabled = false,
+  className = "",
+  type = "button",
+}) => {
+  const ref = useRef<HTMLButtonElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const springConfig = { damping: 20, stiffness: 300 };
+  const springX = useSpring(x, springConfig);
+  const springY = useSpring(y, springConfig);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!ref.current || disabled) return;
+
+    const rect = ref.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const distanceX = e.clientX - centerX;
+    const distanceY = e.clientY - centerY;
+
+    x.set(distanceX * 0.3);
+    y.set(distanceY * 0.3);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.button
+      ref={ref}
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ x: springX, y: springY }}
+      whileTap={{ scale: 0.95 }}
+      className={className}
+    >
+      {children}
+    </motion.button>
+  );
+};
+
+/**
  * Main Landing Page Component
  */
 export default function LandingPage() {
@@ -144,6 +338,28 @@ export default function LandingPage() {
   const [topic, setTopic] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
+
+  // Mouse position tracking for parallax effect
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const { clientX, clientY } = e;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+
+      mouseX.set((clientX - centerX) / 50);
+      mouseY.set((clientY - centerY) / 50);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  const parallaxX = useTransform(mouseX, [-20, 20], [-10, 10]);
+  const parallaxY = useTransform(mouseY, [-20, 20], [-10, 10]);
 
   /**
    * Add toast notification
@@ -155,7 +371,6 @@ export default function LandingPage() {
 
       setToasts((prev) => [...prev, newToast]);
 
-      // Auto-remove after 5 seconds
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 5000);
@@ -174,7 +389,7 @@ export default function LandingPage() {
    * Handle form submission
    */
   const handleGenerate = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       const trimmedTopic = topic.trim();
@@ -195,7 +410,6 @@ export default function LandingPage() {
       setLoading(true);
 
       try {
-        // Call API
         const res = await fetch("/api/roadmap/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -204,7 +418,6 @@ export default function LandingPage() {
 
         const json = await res.json();
 
-        // Handle API errors
         if (!res.ok) {
           const errorType = json.type || "UNKNOWN_ERROR";
           let errorMessage = json.error || "Failed to generate roadmap";
@@ -231,7 +444,6 @@ export default function LandingPage() {
           throw new Error(errorMessage);
         }
 
-        // Validate response structure
         const aiResponse = json.data as SyllabusResponse;
 
         if (
@@ -248,7 +460,6 @@ export default function LandingPage() {
           throw new Error("Invalid AI response structure");
         }
 
-        // ✅ FIX: Convert to Roadmap entity with edges
         const roadmapId = uuidv4();
         const rootId = "root";
         const nodes: RoadmapNode[] = [];
@@ -260,7 +471,6 @@ export default function LandingPage() {
           `[Roadmap Generation] Modules count: ${aiResponse.modules.length}`,
         );
 
-        // Create root node
         nodes.push({
           id: rootId,
           label: aiResponse.courseTitle || trimmedTopic,
@@ -270,12 +480,10 @@ export default function LandingPage() {
           difficulty: "Beginner",
         });
 
-        // ✅ FIX: Create module nodes without mutating childrenIds
         aiResponse.modules.forEach((mod, index) => {
           const modId = `mod-${index}`;
           const parentId = index === 0 ? rootId : `mod-${index - 1}`;
 
-          // Validate difficulty enum
           const validDifficulties: Array<
             "Beginner" | "Intermediate" | "Advanced"
           > = ["Beginner", "Intermediate", "Advanced"];
@@ -290,16 +498,14 @@ export default function LandingPage() {
             label: mod.title,
             description: mod.description,
             status: "locked",
-            parentId, // ✅ Set parentId for edge building
+            parentId,
             estimatedTime: mod.estimatedTime,
             difficulty,
           });
         });
 
-        // ✅ FIX: Build edges from parent-child relationships
         const edges = buildEdgesFromNodes(nodes);
 
-        // ✅ FIX: Calculate initial progress (root is unlocked)
         const unlockedCount = nodes.filter(
           (n) => n.status === "unlocked",
         ).length;
@@ -307,12 +513,11 @@ export default function LandingPage() {
           (unlockedCount / nodes.length) * 100,
         );
 
-        // ✅ FIX: Create roadmap with edges
         const newRoadmap: Roadmap = {
           id: roadmapId,
           topic: aiResponse.courseTitle || trimmedTopic,
           nodes,
-          edges, // ✅ ADD edges array
+          edges,
           createdAt: Date.now(),
           progress: initialProgress,
         };
@@ -324,7 +529,6 @@ export default function LandingPage() {
           progress: initialProgress,
         });
 
-        // Save and navigate
         addRoadmap(newRoadmap);
 
         addToast(
@@ -333,14 +537,12 @@ export default function LandingPage() {
           `${aiResponse.modules.length} modules generated for "${aiResponse.courseTitle}"`,
         );
 
-        // Navigate after short delay to show toast
         setTimeout(() => {
           router.push(`/roadmap/${roadmapId}`);
         }, 500);
       } catch (error) {
         console.error("Generation Error:", error);
 
-        // Error already handled above via toast
         if (error instanceof Error && !error.message.includes("AI")) {
           addToast(
             "error",
@@ -363,17 +565,46 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <AnimatedBackground />
+
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 w-full p-6 flex justify-between items-center z-50">
-        <div className="font-bold text-xl tracking-tight">AURA AI</div>
-        <button className="px-4 py-2 rounded-full border border-neutral-200 text-sm hover:bg-neutral-100 transition-colors">
+      {/* Header with Animation */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed top-0 left-0 w-full p-6 flex justify-between items-center z-50 backdrop-blur-sm"
+      >
+        <motion.div
+          className="font-bold text-xl tracking-tight relative"
+          whileHover={{ scale: 1.05 }}
+          transition={{ type: "spring", stiffness: 400 }}
+        >
+          <motion.span
+            className="inline-block"
+            animate={{
+              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
+            style={{
+              background: "linear-gradient(90deg, #000, #666, #000)",
+              backgroundSize: "200% 100%",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            AURA AI
+          </motion.span>
+        </motion.div>
+        <MagneticButton className="px-4 py-2 rounded-full border border-neutral-200 text-sm hover:bg-neutral-100 transition-colors backdrop-blur-sm">
           Menu
-        </button>
-      </header>
+        </MagneticButton>
+      </motion.header>
 
       {/* Main Content */}
       <main className="flex flex-col items-center justify-center min-h-screen p-6 relative">
@@ -381,90 +612,264 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-4xl w-full text-center space-y-12"
+          style={{ x: parallaxX, y: parallaxY }}
+          className="max-w-4xl w-full text-center space-y-12 relative z-10"
         >
-          {/* Badge */}
+          {/* Badge with Pulse Effect */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
             className="flex justify-center"
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-neutral-200 shadow-sm text-neutral-600 text-sm font-medium">
-              <Sparkles size={14} className="text-black" />
-              <span>Personalized Learning Path</span>
-            </span>
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-neutral-200 shadow-sm text-neutral-600 text-sm font-medium relative overflow-hidden group cursor-pointer"
+            >
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-neutral-100 to-transparent"
+                animate={{
+                  x: ["-200%", "200%"],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+              />
+              <motion.div
+                animate={{
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+              >
+                <Sparkles size={14} className="text-black relative z-10" />
+              </motion.div>
+              <span className="relative z-10">Personalized Learning Path</span>
+            </motion.span>
           </motion.div>
 
-          {/* Heading */}
+          {/* Heading with Character Animation */}
           <div className="space-y-6">
-            <h1 className="font-serif text-6xl md:text-8xl font-medium leading-[0.9] tracking-tight text-black">
-              MASTER <br /> ANY SKILL.
-            </h1>
-            <p className="text-lg md:text-xl text-neutral-500 max-w-lg mx-auto font-light leading-relaxed">
+            <motion.h1
+              className="font-serif text-6xl md:text-8xl font-medium leading-[0.9] tracking-tight text-black"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+            >
+              {"MASTER".split("").map((char, index) => (
+                <motion.span
+                  key={`master-${index}`}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 0.3 + index * 0.05,
+                    type: "spring",
+                    stiffness: 200,
+                  }}
+                  className="inline-block hover:text-neutral-600 transition-colors cursor-default"
+                >
+                  {char}
+                </motion.span>
+              ))}{" "}
+              <br />
+              {"ANY SKILL.".split("").map((char, index) => (
+                <motion.span
+                  key={`skill-${index}`}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 0.6 + index * 0.05,
+                    type: "spring",
+                    stiffness: 200,
+                  }}
+                  className="inline-block hover:text-neutral-600 transition-colors cursor-default"
+                >
+                  {char === " " ? "\u00A0" : char}
+                </motion.span>
+              ))}
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.8 }}
+              className="text-lg md:text-xl text-neutral-500 max-w-lg mx-auto font-light leading-relaxed"
+            >
               Simply enter a topic. Our AI crafts a bespoke syllabus, tailored
               specifically to your pace and needs.
-            </p>
+            </motion.p>
           </div>
 
-          {/* Form */}
-          <form
+          {/* Enhanced Form with Focus Effects */}
+          <motion.form
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.2, duration: 0.6 }}
             onSubmit={handleGenerate}
             className="relative max-w-xl mx-auto w-full group"
           >
-            <div className="relative flex items-center">
-              <div className="absolute left-6 text-neutral-400 group-focus-within:text-black transition-colors">
+            <motion.div
+              animate={{
+                boxShadow: isInputFocused
+                  ? "0 0 0 4px rgba(0, 0, 0, 0.1)"
+                  : "0 0 0 0px rgba(0, 0, 0, 0)",
+              }}
+              transition={{ duration: 0.3 }}
+              className="relative flex items-center rounded-full"
+            >
+              <motion.div
+                animate={{
+                  x: isInputFocused ? 2 : 0,
+                  color: isInputFocused ? "#000" : "#a3a3a3",
+                }}
+                className="absolute left-6 z-10"
+              >
                 <Search size={20} />
-              </div>
+              </motion.div>
 
               <input
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
                 placeholder="What do you want to learn today?"
                 disabled={loading}
-                className="w-full pl-16 pr-20 py-6 bg-neutral-50 hover:bg-neutral-100 focus:bg-white border-2 border-transparent focus:border-black rounded-full text-lg outline-none transition-all duration-300 placeholder:text-neutral-400 text-black disabled:opacity-60"
+                className="w-full pl-16 pr-20 py-6 bg-neutral-50 hover:bg-neutral-100 focus:bg-white border-2 border-transparent focus:border-black rounded-full text-lg outline-none transition-all duration-300 placeholder:text-neutral-400 text-black disabled:opacity-60 relative z-0"
               />
 
-              <button
+              <motion.button
                 type="submit"
                 disabled={loading || !topic.trim()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 bg-black hover:bg-neutral-800 text-white rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:bg-neutral-200 disabled:cursor-not-allowed disabled:hover:scale-100"
+                whileHover={{ scale: loading ? 1 : 1.05 }}
+                whileTap={{ scale: loading ? 1 : 0.95 }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 bg-black hover:bg-neutral-800 text-white rounded-full flex items-center justify-center transition-all disabled:bg-neutral-200 disabled:cursor-not-allowed z-10 overflow-hidden group"
               >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <ArrowRight size={20} />
-                )}
-              </button>
-            </div>
-          </form>
+                <AnimatePresence mode="wait">
+                  {loading ? (
+                    <motion.div
+                      key="loader"
+                      initial={{ rotate: 0 }}
+                      animate={{ rotate: 360 }}
+                      exit={{ opacity: 0, scale: 0 }}
+                      transition={{
+                        rotate: {
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear",
+                        },
+                      }}
+                    >
+                      <Loader2 size={20} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="arrow"
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: 20, opacity: 0 }}
+                      whileHover={{ x: 3 }}
+                    >
+                      <ArrowRight size={20} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-          {/* Suggestions */}
-          <div className="pt-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-4">
+                {/* Ripple effect on click */}
+                <motion.div
+                  className="absolute inset-0 bg-white rounded-full"
+                  initial={{ scale: 0, opacity: 0.5 }}
+                  whileTap={{ scale: 2, opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </motion.button>
+            </motion.div>
+          </motion.form>
+
+          {/* ✅ FIXED: Enhanced Suggestions (div instead of p) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.4, duration: 0.8 }}
+            className="pt-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+              className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-4 flex items-center justify-center gap-2"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <TrendingUp size={12} />
+              </motion.div>
               Trending Topics
-            </p>
+            </motion.div>
             <div className="flex flex-wrap justify-center gap-3">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  type="button"
-                  disabled={loading}
-                  className="px-6 py-3 rounded-full border border-neutral-200 text-sm text-neutral-600 hover:border-black hover:bg-black hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+              {SUGGESTIONS.map((suggestion, index) => (
+                <motion.div
+                  key={suggestion.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 1.6 + index * 0.1,
+                    type: "spring",
+                    stiffness: 200,
+                  }}
                 >
-                  {suggestion}
-                </button>
+                  <MagneticButton
+                    onClick={() => handleSuggestionClick(suggestion.label)}
+                    disabled={loading}
+                    className="px-6 py-3 rounded-full border border-neutral-200 text-sm text-neutral-600 hover:border-black hover:bg-black hover:text-white transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed backdrop-blur-sm group relative overflow-hidden"
+                  >
+                    <span className="relative z-10 flex items-center">
+                      {suggestion.label}
+                    </span>
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-neutral-900 to-black"
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </MagneticButton>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
 
-        {/* Footer */}
-        <div className="fixed bottom-6 text-neutral-400 text-xs tracking-wider">
-          _Crafting Knowledge_
-        </div>
+        {/* Footer with Typing Effect */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2, duration: 1 }}
+          className="fixed bottom-6 text-neutral-400 text-xs tracking-wider font-mono"
+        >
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            _
+          </motion.span>
+          Crafting Knowledge
+          <motion.span
+            animate={{ opacity: [0, 1] }}
+            transition={{ duration: 0.5, repeat: Infinity }}
+          >
+            _
+          </motion.span>
+        </motion.div>
       </main>
     </div>
   );

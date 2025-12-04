@@ -14,7 +14,7 @@ Requirements:
 • 5-6 modules (Beginner → Advanced progression)
 • Each module: 3-5 subtopics
 • Descriptive titles (min 10 chars, NO "M1", "Module 1")
-• Indonesian language
+• English language
 
 Output: Pure JSON, compact format (no markdown wrapper, no newlines in strings)
 Structure: {{"courseTitle":"string","overview":"string","modules":[{{"title":"descriptive name","description":"string","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"string","subTopics":["string"]}}]}}

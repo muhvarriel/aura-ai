@@ -178,79 +178,6 @@ const MultiLayerBackground: React.FC = () => (
 );
 
 /**
- * Stats Panel
- */
-const StatsPanel: React.FC<{
-  totalNodes: number;
-  completedNodes: number;
-  unlockedNodes: number;
-}> = ({ totalNodes, completedNodes, unlockedNodes }) => {
-  const progress =
-    totalNodes > 0 ? Math.round((completedNodes / totalNodes) * 100) : 0;
-
-  return (
-    <Panel position="top-right" className="m-6 pr-16">
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white/95 backdrop-blur-xl border-2 border-neutral-200 rounded-2xl px-5 py-4 shadow-2xl"
-      >
-        <div className="flex flex-col gap-3 min-w-[200px]">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                Progress
-              </span>
-              <span className="text-base font-bold text-black">
-                {progress}%
-              </span>
-            </div>
-            <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden shadow-inner">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 1, ease: "circOut" }}
-                className="h-full rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #10b981 0%, #059669 100%)",
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t-2 border-neutral-100">
-            <div className="text-center">
-              <div className="text-xl font-bold text-black">{totalNodes}</div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wide font-semibold">
-                Total
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-emerald-600">
-                {completedNodes}
-              </div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wide font-semibold">
-                Done
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-blue-600">
-                {unlockedNodes}
-              </div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-wide font-semibold">
-                Active
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </Panel>
-  );
-};
-
-/**
  * Reset Layout Button Component
  */
 const ResetLayoutButton: React.FC<{
@@ -369,13 +296,6 @@ function RoadmapGraph({
     setNodes(reactFlowNodes);
   }, [reactFlowNodes, setNodes, stateVersion]);
 
-  const stats = useMemo(() => {
-    const total = nodes.length;
-    const completed = nodes.filter((n) => n.status === "completed").length;
-    const unlocked = nodes.filter((n) => n.status === "unlocked").length;
-    return { total, completed, unlocked };
-  }, [nodes]);
-
   // Enhanced node click handler
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -477,12 +397,6 @@ function RoadmapGraph({
     <div className="w-full h-full min-h-[600px] bg-gradient-to-br from-neutral-50 to-white relative">
       <ReactFlow {...reactFlowProps}>
         <MultiLayerBackground />
-
-        <StatsPanel
-          totalNodes={stats.total}
-          completedNodes={stats.completed}
-          unlockedNodes={stats.unlocked}
-        />
 
         <ResetLayoutButton onReset={handleResetLayout} />
 
