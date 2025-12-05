@@ -12,28 +12,33 @@
 ## ✨ Features
 
 ### 🎯 **AI-Powered Roadmap Generation**
+
 - Generate complete learning paths for any topic in seconds
 - Structured modules with estimated completion times
 - Progressive difficulty levels (Beginner → Intermediate → Advanced)
 
 ### 📊 **Interactive Graph Visualization**
+
 - Beautiful, interactive node-based roadmap display
 - Visual progress tracking
 - Intuitive navigation through learning modules
 
 ### 📚 **Rich Content Delivery**
+
 - AI-generated module content with markdown support
 - Interactive quizzes for knowledge validation
 - Code syntax highlighting
 - Resource recommendations
 
 ### 🎨 **Modern, Elegant UI**
+
 - Smooth animations with Framer Motion
 - Responsive design for all devices
 - Dark/light theme support (coming soon)
 - Magnetic button interactions
 
 ### 💾 **Progress Persistence**
+
 - Local state management with Zustand
 - Track completed modules
 - Resume learning anytime
@@ -79,12 +84,14 @@ src/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/muhvarriel/aura-ai.git
    cd aura-ai
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    # or
@@ -94,12 +101,13 @@ src/
    ```
 
 3. **Configure environment variables**
-   
+
    Create a `.env.local` file in the root directory:
+
    ```env
    # Groq AI Configuration
    GROQ_API_KEY=your_groq_api_key_here
-   
+
    # Optional: Model Configuration
    GROQ_MODEL=llama-3.3-70b-versatile
    ```
@@ -111,6 +119,7 @@ src/
    - Generate a new API key
 
 4. **Run the development server**
+
    ```bash
    npm run dev
    # or
@@ -120,7 +129,7 @@ src/
    ```
 
 5. **Open your browser**
-   
+
    Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
 
 ---
@@ -149,27 +158,33 @@ src/
 ## 🛠️ Tech Stack
 
 ### Frontend Framework
+
 - **Next.js 16** - React framework with App Router
 - **React 19** - UI library
 - **TypeScript** - Type-safe JavaScript
 
 ### Styling & Animation
+
 - **Tailwind CSS 4** - Utility-first CSS framework
 - **Framer Motion** - Animation library
 - **Lucide Icons** - Beautiful icon set
 
 ### AI & Data
+
 - **LangChain** - LLM application framework
 - **Groq** - Ultra-fast AI inference
 - **Zod** - Schema validation
 
 ### Visualization
+
 - **React Flow (@xyflow/react)** - Interactive node graphs
 
 ### State Management
+
 - **Zustand** - Lightweight state management
 
 ### Content Rendering
+
 - **react-markdown** - Markdown renderer
 
 ---
@@ -198,6 +213,7 @@ npm run format
 ### Code Quality
 
 This project uses:
+
 - **ESLint** for code linting
 - **Prettier** for code formatting
 - **TypeScript** for type safety
@@ -209,9 +225,11 @@ This project uses:
 ### API Routes
 
 #### `POST /api/roadmap/generate`
+
 Generates a complete learning roadmap for a given topic.
 
 **Request Body:**
+
 ```json
 {
   "topic": "Machine Learning"
@@ -219,6 +237,7 @@ Generates a complete learning roadmap for a given topic.
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -230,9 +249,11 @@ Generates a complete learning roadmap for a given topic.
 ```
 
 #### `POST /api/roadmap/content`
+
 Fetches detailed content for a specific roadmap node.
 
 **Request Body:**
+
 ```json
 {
   "topic": "Neural Networks",
@@ -244,10 +265,10 @@ Fetches detailed content for a specific roadmap node.
 
 ## 🔐 Environment Variables
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `GROQ_API_KEY` | Groq API authentication key | ✅ Yes | - |
-| `GROQ_MODEL` | AI model to use | ❌ No | `llama-3.3-70b-versatile` |
+| Variable       | Description                 | Required | Default                   |
+| -------------- | --------------------------- | -------- | ------------------------- |
+| `GROQ_API_KEY` | Groq API authentication key | ✅ Yes   | -                         |
+| `GROQ_MODEL`   | AI model to use             | ❌ No    | `llama-3.3-70b-versatile` |
 
 ---
 
@@ -302,12 +323,14 @@ Found a bug or have a feature request? [Open an issue](https://github.com/muhvar
 ## 🗺️ Roadmap
 
 ### Current Version (v0.1.0)
+
 - ✅ AI-powered roadmap generation
 - ✅ Interactive graph visualization
 - ✅ Progress tracking
 - ✅ Quiz system
 
 ### Upcoming Features
+
 - 🔄 User authentication
 - 🔄 Cloud roadmap storage
 - 🔄 Collaborative learning

@@ -4,10 +4,10 @@
 
 We actively maintain and provide security updates for the following versions of Aura AI:
 
-| Version | Supported          | Status        |
-| ------- | ------------------ | ------------- |
-| 0.1.x   | ✅ Yes             | Active        |
-| < 0.1   | ❌ No              | Not supported |
+| Version | Supported | Status        |
+| ------- | --------- | ------------- |
+| 0.1.x   | ✅ Yes    | Active        |
+| < 0.1   | ❌ No     | Not supported |
 
 ---
 
@@ -43,15 +43,16 @@ Please provide as much information as possible:
 
 **Affected Component:** src/presentation/components/ui/MarkdownView.tsx
 
-**Description:** 
+**Description:**
 User input is not properly sanitized before rendering...
 
 **Steps to Reproduce:**
+
 1. Navigate to roadmap page
 2. Enter malicious script in topic field
 3. Observe script execution
 
-**Impact:** 
+**Impact:**
 Attacker can execute arbitrary JavaScript in victim's browser
 
 **Suggested Fix:**
@@ -64,12 +65,12 @@ Implement proper input sanitization using DOMPurify
 
 We are committed to addressing security issues promptly:
 
-| Timeline | Action |
-|----------|--------|
-| **< 24 hours** | Initial acknowledgment of your report |
-| **< 7 days** | Detailed response with our assessment |
-| **< 30 days** | Fix implemented and tested (severity dependent) |
-| **< 45 days** | Public disclosure (coordinated with reporter) |
+| Timeline       | Action                                          |
+| -------------- | ----------------------------------------------- |
+| **< 24 hours** | Initial acknowledgment of your report           |
+| **< 7 days**   | Detailed response with our assessment           |
+| **< 30 days**  | Fix implemented and tested (severity dependent) |
+| **< 45 days**  | Public disclosure (coordinated with reporter)   |
 
 ### Severity Levels
 
@@ -92,12 +93,14 @@ We are committed to addressing security issues promptly:
 - ✅ **Use different keys** for development and production
 
 **Bad Example:**
+
 ```typescript
 // ❌ NEVER DO THIS
 const apiKey = "gsk_abc123xyz";
 ```
 
 **Good Example:**
+
 ```typescript
 // ✅ DO THIS
 const apiKey = process.env.GROQ_API_KEY;
@@ -111,6 +114,7 @@ GROQ_API_KEY=your_secret_key_here
 ```
 
 Add to `.gitignore`:
+
 ```gitignore
 .env.local
 .env*.local
@@ -131,6 +135,7 @@ Add to `.gitignore`:
 #### Secure Coding Guidelines
 
 1. **Input Validation**
+
    ```typescript
    // ✅ Validate all user inputs
    const topicSchema = z.string().min(3).max(100).trim();
@@ -138,19 +143,21 @@ Add to `.gitignore`:
    ```
 
 2. **Output Encoding**
+
    ```typescript
    // ✅ Sanitize before rendering
-   import DOMPurify from 'dompurify';
+   import DOMPurify from "dompurify";
    const cleanHTML = DOMPurify.sanitize(userContent);
    ```
 
 3. **Error Handling**
+
    ```typescript
    // ❌ Bad: Exposes sensitive info
    catch (error) {
      return res.json({ error: error.message });
    }
-   
+
    // ✅ Good: Generic error message
    catch (error) {
      console.error('[Error]', error);
@@ -172,8 +179,8 @@ Aura AI operates with minimal data collection:
 
 ### Third-Party Services
 
-| Service | Purpose | Data Shared |
-|---------|---------|-------------|
+| Service | Purpose            | Data Shared              |
+| ------- | ------------------ | ------------------------ |
 | Groq AI | Roadmap generation | User-entered topics only |
 
 ### Data Retention
@@ -265,7 +272,7 @@ We appreciate security researchers who help keep Aura AI secure. Researchers who
 
 ### Contributors
 
-*No vulnerabilities reported yet. Be the first!*
+_No vulnerabilities reported yet. Be the first!_
 
 ---
 

@@ -345,7 +345,6 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const hasHydrated = useRoadmapStore(selectHasHydrated);
-
   const stateVersion = useRoadmapStore(selectStateVersion);
 
   const params = useParams();
@@ -384,7 +383,7 @@ const RoadmapPageContent = ({ paramsId }: { paramsId: string }) => {
       const statusMap = roadmap.nodes.map((n) => `${n.id}:${n.status}`);
       console.log("[RoadmapPage] 📊 Node status map:", statusMap);
     }
-  }, [roadmap?.nodes]);
+  }, [roadmap]);
 
   const handleNodeClick = useCallback((nodeId: string) => {
     console.log(`[RoadmapPage] 🖱️ Node clicked: ${nodeId}`);

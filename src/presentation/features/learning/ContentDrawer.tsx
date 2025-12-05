@@ -207,49 +207,6 @@ export default function ContentDrawer({
     };
   }, []);
 
-  useEffect(() => {
-    if (!isOpen) {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-
-      setContent(null);
-      setLoadingState("idle");
-      setError(null);
-      setRetryCount(0);
-      lastFetchKeyRef.current = "";
-    }
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && node && topic) {
-      const fetchKey = `${topic}::${node.id}::${node.label}`;
-
-      if (fetchKey !== lastFetchKeyRef.current) {
-        lastFetchKeyRef.current = fetchKey;
-
-        setContent(null);
-        setError(null);
-        setRetryCount(0);
-        setLoadingState("idle");
-
-        console.log("[ContentDrawer] Loading new content for:", {
-          topic,
-          nodeId: node.id,
-          nodeLabel: node.label,
-        });
-        loadData();
-      }
-    }
-  }, [node?.id, node?.label, topic, isOpen]);
-
   const loadData = useCallback(async () => {
     if (!node || !topic) {
       console.warn("[ContentDrawer] No node or topic provided");
@@ -300,6 +257,49 @@ export default function ContentDrawer({
       }
     }
   }, [node, topic, fetchContent, retryCount, categorizeError]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+
+      setContent(null);
+      setLoadingState("idle");
+      setError(null);
+      setRetryCount(0);
+      lastFetchKeyRef.current = "";
+    }
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && node && topic) {
+      const fetchKey = `${topic}::${node.id}::${node.label}`;
+
+      if (fetchKey !== lastFetchKeyRef.current) {
+        lastFetchKeyRef.current = fetchKey;
+
+        setContent(null);
+        setError(null);
+        setRetryCount(0);
+        setLoadingState("idle");
+
+        console.log("[ContentDrawer] Loading new content for:", {
+          topic,
+          nodeId: node.id,
+          nodeLabel: node.label,
+        });
+        loadData();
+      }
+    }
+  }, [node, topic, isOpen, loadData]);
 
   const handleRetry = useCallback(() => {
     const nextRetryCount = retryCount + 1;

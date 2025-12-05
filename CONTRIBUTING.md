@@ -36,22 +36,26 @@ This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participatin
 
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/aura-ai.git
    cd aura-ai
    ```
 
 3. **Add upstream remote:**
+
    ```bash
    git remote add upstream https://github.com/muhvarriel/aura-ai.git
    ```
 
 4. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 5. **Set up environment:**
+
    ```bash
    cp .env.example .env.local
    # Add your GROQ_API_KEY to .env.local
@@ -85,6 +89,7 @@ Before creating bug reports, please check existing issues to avoid duplicates.
 A clear description of what the bug is.
 
 **To Reproduce**
+
 1. Go to '...'
 2. Click on '...'
 3. See error
@@ -96,10 +101,11 @@ What you expected to happen.
 If applicable, add screenshots.
 
 **Environment:**
- - OS: [e.g. macOS 14.0]
- - Browser: [e.g. Chrome 120]
- - Node: [e.g. 18.17.0]
- - Version: [e.g. 0.1.0]
+
+- OS: [e.g. macOS 14.0]
+- Browser: [e.g. Chrome 120]
+- Node: [e.g. 18.17.0]
+- Version: [e.g. 0.1.0]
 ```
 
 ### ✨ Suggesting Enhancements
@@ -237,7 +243,7 @@ function generateRoadmap(topic: string): Promise<Roadmap> {
 interface RoadmapNode {
   id: string;
   label: string;
-  status: 'locked' | 'unlocked' | 'completed';
+  status: "locked" | "unlocked" | "completed";
 }
 ```
 
@@ -309,12 +315,12 @@ interface ComponentProps {
 export function MyComponent({ title, onSubmit }: ComponentProps) {
   // 4. Hooks
   const [value, setValue] = useState('');
-  
+
   // 5. Handlers
   const handleClick = () => {
     onSubmit();
   };
-  
+
   // 6. Render
   return <div>...</div>;
 }
@@ -367,11 +373,11 @@ function calculateProgress(completed: number, total: number): number {
 
 ```typescript
 // ❌ Bad
-const x = roadmaps.filter(r => r.s === 'c');
+const x = roadmaps.filter((r) => r.s === "c");
 
 // ✅ Good
 const completedRoadmaps = roadmaps.filter(
-  roadmap => roadmap.status === 'completed'
+  (roadmap) => roadmap.status === "completed",
 );
 ```
 
@@ -473,21 +479,26 @@ feat(roadmap): add collaborative editing
 
 ```markdown
 ## Description
+
 Brief description of changes.
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 How has this been tested?
 
 ## Screenshots (if applicable)
+
 [Add screenshots]
 
 ## Checklist
+
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Comments added for complex code

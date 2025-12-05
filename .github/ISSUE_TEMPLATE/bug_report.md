@@ -1,9 +1,9 @@
 ---
 name: Bug Report
 about: Create a report to help us improve
-title: '[BUG] '
-labels: 'bug'
-assignees: ''
+title: "[BUG] "
+labels: "bug"
+assignees: ""
 ---
 
 ## 🐞 Bug Description
@@ -42,16 +42,19 @@ If applicable, add screenshots to help explain your problem.
 ## 💻 Environment
 
 **Desktop:**
+
 - OS: [e.g. macOS 14.0, Windows 11, Ubuntu 22.04]
 - Browser: [e.g. Chrome 120, Firefox 121, Safari 17]
 - Version: [e.g. 0.1.0]
 
 **Mobile:**
+
 - Device: [e.g. iPhone 15, Samsung Galaxy S23]
 - OS: [e.g. iOS 17.2, Android 14]
 - Browser: [e.g. Safari, Chrome]
 
 **Node Environment (if applicable):**
+
 - Node Version: [e.g. 18.17.0]
 - Package Manager: [e.g. npm 9.8.0, pnpm 8.6.0]
 
