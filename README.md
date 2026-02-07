@@ -1,358 +1,137 @@
-# 🌟 Aura AI - Personalized Learning Roadmap Generator
+# Aura AI: Intelligent Learning Path Generation Systems
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
+Aura AI is an advanced, industrial-grade learning trajectory generation engine designed to transform arbitrary technical or academic subjects into structured, visually represented, and interactive educational roadmaps. By leveraging Large Language Models (LLMs) and graph theory, the system provides a comprehensive pedagogical framework tailored to individual learning progression.
 
-> **Transform any topic into a personalized, AI-powered learning journey.** Aura AI generates comprehensive learning roadmaps with interactive visualizations, quizzes, and curated content tailored to your pace.
+## Architecture
 
----
+The system implements Clean Architecture principles to ensure high maintainability, testability, and separation of concerns. The codebase is organized into three primary layers:
 
-## ✨ Features
+1.  **Core (Domain Layer):** Contains the essential business logic, entities (Roadmap, Node, Quiz), and domain-specific constants (AI prompts, configurations). This layer is independent of external frameworks.
+2.  **Infrastructure (External Services):** Handles integrations with external providers, including the LangChain-based AI inference engine (Groq) and the Zustand-based state persistence layer.
+3.  **Presentation (UI Layer):** Powered by Next.js and React Flow, this layer manages the interactive graph visualization, content rendering, and user interaction flows.
 
-### 🎯 **AI-Powered Roadmap Generation**
+### Data Flow
 
-- Generate complete learning paths for any topic in seconds
-- Structured modules with estimated completion times
-- Progressive difficulty levels (Beginner → Intermediate → Advanced)
+1.  **Ingestion:** User provides a learning objective (Topic).
+2.  **Synthesis:** The Infrastructure layer executes a structured LangChain sequence to generate a valid Syllabus JSON.
+3.  **Transformation:** The Core layer transforms the JSON into a directed acyclic graph (DAG) structure.
+4.  **Layout:** The system calculates optimal node positioning via the Presentation layer's layout engine.
+5.  **Delivery:** Users interact with the visualized nodes to unlock gated educational content and validate knowledge through generated assessments.
 
-### 📊 **Interactive Graph Visualization**
+## Prerequisites
 
-- Beautiful, interactive node-based roadmap display
-- Visual progress tracking
-- Intuitive navigation through learning modules
+The following system requirements must be met before deploying the application:
 
-### 📚 **Rich Content Delivery**
+- **Operating System:** Linux, macOS, or Windows (WSL recommended).
+- **Runtime Environment:** Node.js v18.17.0 or higher.
+- **Package Manager:** Identifiable npm, yarn, or pnpm installation.
+- **API Access:** Valid Groq API credentials.
 
-- AI-generated module content with markdown support
-- Interactive quizzes for knowledge validation
-- Code syntax highlighting
-- Resource recommendations
+## Installation
 
-### 🎨 **Modern, Elegant UI**
+Follow these steps to initialize the local development environment:
 
-- Smooth animations with Framer Motion
-- Responsive design for all devices
-- Dark/light theme support (coming soon)
-- Magnetic button interactions
+1.  **Clone Repository:**
 
-### 💾 **Progress Persistence**
+    ```bash
+    git clone https://github.com/muhvarriel/aura-ai.git
+    cd aura-ai
+    ```
 
-- Local state management with Zustand
-- Track completed modules
-- Resume learning anytime
+2.  **Dependency Installation:**
 
----
+    ```bash
+    npm install
+    ```
 
-## 🏗️ Architecture
+3.  **Environment Setup:**
+    Initialize the local configuration file.
+    ```bash
+    cp .env.example .env.local
+    ```
 
-Aura AI follows **Clean Architecture** principles for maintainability and scalability:
+## Configuration
 
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/               # API Routes
-│   │   └── roadmap/       # Roadmap generation & content
-│   ├── roadmap/[id]/      # Dynamic roadmap pages
-│   └── page.tsx           # Landing page
-├── core/                   # Domain Layer (Business Logic)
-│   ├── constants/         # AI config, prompts
-│   └── entities/          # Domain models
-├── infrastructure/         # External Services
-│   ├── ai/               # LangChain integration
-│   └── store/            # State management
-├── presentation/           # UI Layer
-│   ├── components/       # Reusable UI components
-│   ├── features/         # Feature-specific components
-│   └── hooks/            # Custom React hooks
-└── lib/                    # Shared Utilities
-    ├── graph-layout.ts   # Graph calculation
-    └── utils.ts          # Helper functions
-```
+The application requires specific environment variables to function correctly. These must be defined in the `.env.local` file.
 
----
+| Variable       | Requirement | Description                                                   |
+| :------------- | :---------- | :------------------------------------------------------------ |
+| `GROQ_API_KEY` | Required    | Authentication token for Groq AI inference services.          |
+| `GROQ_MODEL`   | Optional    | Specifies the LLM model (Default: `llama-3.3-70b-versatile`). |
 
-## 🚀 Getting Started
+## Usage
 
-### Prerequisites
+### Development Mode
 
-- **Node.js** 18.0 or higher
-- **npm**, **yarn**, **pnpm**, or **bun**
-- **Groq API Key** (for AI generation)
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/muhvarriel/aura-ai.git
-   cd aura-ai
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   ```
-
-3. **Configure environment variables**
-
-   Create a `.env.local` file in the root directory:
-
-   ```env
-   # Groq AI Configuration
-   GROQ_API_KEY=your_groq_api_key_here
-
-   # Optional: Model Configuration
-   GROQ_MODEL=llama-3.3-70b-versatile
-   ```
-
-   **Get your Groq API Key:**
-   - Visit [https://console.groq.com](https://console.groq.com)
-   - Sign up for a free account
-   - Navigate to API Keys section
-   - Generate a new API key
-
-4. **Run the development server**
-
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   ```
-
-5. **Open your browser**
-
-   Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
-
----
-
-## 📖 Usage
-
-### Generating Your First Roadmap
-
-1. **Enter a Topic:** Type any subject you want to learn (e.g., "Machine Learning", "Web3 Development")
-2. **Generate:** Click the arrow button or press Enter
-3. **Explore:** Navigate through the interactive roadmap graph
-4. **Learn:** Click nodes to view detailed content and quizzes
-5. **Track Progress:** Mark modules as complete to track your journey
-
-### Suggested Topics
-
-- 🤖 Artificial Intelligence
-- 🌐 Web3 Development
-- 📊 Data Science
-- 🔐 Cybersecurity
-- 🎨 UI/UX Design
-- 📱 Mobile App Development
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend Framework
-
-- **Next.js 16** - React framework with App Router
-- **React 19** - UI library
-- **TypeScript** - Type-safe JavaScript
-
-### Styling & Animation
-
-- **Tailwind CSS 4** - Utility-first CSS framework
-- **Framer Motion** - Animation library
-- **Lucide Icons** - Beautiful icon set
-
-### AI & Data
-
-- **LangChain** - LLM application framework
-- **Groq** - Ultra-fast AI inference
-- **Zod** - Schema validation
-
-### Visualization
-
-- **React Flow (@xyflow/react)** - Interactive node graphs
-
-### State Management
-
-- **Zustand** - Lightweight state management
-
-### Content Rendering
-
-- **react-markdown** - Markdown renderer
-
----
-
-## 🧪 Development
-
-### Available Scripts
+Execute the following command to start the development server with Hot Module Replacement (HMR):
 
 ```bash
-# Start development server
 npm run dev
+```
 
-# Build for production
+The application will be accessible at `http://localhost:3000`.
+
+### Production Build
+
+To generate an optimized production bundle:
+
+```bash
 npm run build
-
-# Start production server
 npm run start
-
-# Run linter
-npm run lint
-
-# Format code
-npm run format
 ```
 
-### Code Quality
+### Protocol for Generating Roadmaps
 
-This project uses:
+1.  Navigate to the primary interface.
+2.  Submit a technical subject (min. 3 characters).
+3.  The system will synthesize a Roadmap entity and persist it to local storage.
+4.  Interact with the graph nodes to access gated learning materials.
 
-- **ESLint** for code linting
-- **Prettier** for code formatting
-- **TypeScript** for type safety
+## Testing
 
----
+Quality assurance is maintained through strict linting and type-checking protocols:
 
-## 📁 Project Structure Details
+- **Linting:**
+  ```bash
+  npm run lint
+  ```
+- **Static Type Analysis:**
+  ```bash
+  npm run typecheck
+  ```
+- **Formatting Verification:**
+  ```bash
+  npm run format
+  ```
 
-### API Routes
+## Project Structure
 
-#### `POST /api/roadmap/generate`
-
-Generates a complete learning roadmap for a given topic.
-
-**Request Body:**
-
-```json
-{
-  "topic": "Machine Learning"
-}
+```text
+src/
+├── app/                    # Routing layer and API controller definitions
+│   ├── api/               # Serverless function endpoints for AI processing
+│   └── roadmap/           # View layer for roadmap interaction
+├── core/                   # Pure business logic and domain entities
+│   ├── constants/         # System-wide configuration and prompts
+│   └── entities/          # Type definitions and interface contracts
+├── infrastructure/         # External service adaptations
+│   ├── ai/               # LLM chain implementation (LangChain)
+│   └── store/            # Client-side state persistence (Zustand)
+├── presentation/           # React component architecture
+│   ├── components/       # Atomic UI elements
+│   └── features/         # Complex, domain-coupled components
+└── lib/                    # Shared utility functions and layout logic
 ```
 
-**Response:**
+## Contributing
 
-```json
-{
-  "data": {
-    "courseTitle": "Complete Machine Learning Guide",
-    "overview": "Comprehensive path to master ML",
-    "modules": [...]
-  }
-}
-```
+Contributions must adhere to the following standards:
 
-#### `POST /api/roadmap/content`
+1.  Fork the repository and create a feature-specific branch.
+2.  Ensure code compliance with existing ESLint and Prettier configurations.
+3.  Implement comprehensive TypeScript interfaces for all new features.
+4.  Submit a Pull Request with a technical summary of the implementation details.
 
-Fetches detailed content for a specific roadmap node.
+## License
 
-**Request Body:**
-
-```json
-{
-  "topic": "Neural Networks",
-  "moduleTitle": "Introduction to Neural Networks"
-}
-```
-
----
-
-## 🔐 Environment Variables
-
-| Variable       | Description                 | Required | Default                   |
-| -------------- | --------------------------- | -------- | ------------------------- |
-| `GROQ_API_KEY` | Groq API authentication key | ✅ Yes   | -                         |
-| `GROQ_MODEL`   | AI model to use             | ❌ No    | `llama-3.3-70b-versatile` |
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Quick Contribution Steps
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 🔒 Security
-
-Security is a top priority. Please see our [Security Policy](SECURITY.md) for reporting vulnerabilities.
-
----
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org/) - The React Framework
-- [Groq](https://groq.com/) - Lightning-fast AI inference
-- [LangChain](https://langchain.com/) - LLM application framework
-- [React Flow](https://reactflow.dev/) - Node-based graph library
-- [Framer Motion](https://www.framer.com/motion/) - Animation library
-
----
-
-## 📞 Contact & Support
-
-- **Author:** Varriel Nizar
-- **GitHub:** [@muhvarriel](https://github.com/muhvarriel)
-- **Website:** [varrielnizar.expo.app](http://varrielnizar.expo.app)
-
-### Report Issues
-
-Found a bug or have a feature request? [Open an issue](https://github.com/muhvarriel/aura-ai/issues/new/choose)
-
----
-
-## 🗺️ Roadmap
-
-### Current Version (v0.1.0)
-
-- ✅ AI-powered roadmap generation
-- ✅ Interactive graph visualization
-- ✅ Progress tracking
-- ✅ Quiz system
-
-### Upcoming Features
-
-- 🔄 User authentication
-- 🔄 Cloud roadmap storage
-- 🔄 Collaborative learning
-- 🔄 Export roadmaps (PDF, PNG)
-- 🔄 Multiple AI model support
-- 🔄 Custom roadmap templates
-- 🔄 Learning analytics dashboard
-
----
-
-## ⭐ Star History
-
-If you find Aura AI helpful, please consider giving it a star! ⭐
-
-[![Star History Chart](https://api.star-history.com/svg?repos=muhvarriel/aura-ai&type=Date)](https://star-history.com/#muhvarriel/aura-ai&Date)
-
----
-
-<div align="center">
-
-**Built with ❤️ by [Varriel](https://github.com/muhvarriel)**
-
-[Report Bug](https://github.com/muhvarriel/aura-ai/issues) · [Request Feature](https://github.com/muhvarriel/aura-ai/issues) · [Documentation](https://github.com/muhvarriel/aura-ai/wiki)
-
-</div>
+This project is licensed under the MIT License. Refer to the `LICENSE` file for full legal terminology.
